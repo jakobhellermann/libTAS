@@ -211,4 +211,4 @@ SUFFIXES = .h _moc.cpp
 CLEANFILES = $(libTAS_MOCSOURCES)
 
 install-exec-hook:
-	if command -v setcap >/dev/null 2>&1; then setcap cap_checkpoint_restore+eip $(DESTDIR)$(bindir)/$(bin_PROGRAMS); fi
+	if command -v setcap >/dev/null 2>&1; then sudo setcap cap_checkpoint_restore+eip $(DESTDIR)$(bindir)/$(bin_PROGRAMS); fi

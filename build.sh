@@ -21,4 +21,4 @@ chmod +x linuxdeploy*.AppImage
 APPDIR_PATH=$(readlink -f ./AppDir)
 
 make prefix=/usr "DESTDIR=$APPDIR_PATH" install
-ARCH=x86_64 ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir AppDir/ --plugin qt --output appimage
+NO_STRIP=1 ARCH=x86_64 ./linuxdeploy-x86_64.AppImage --appimage-extract-and-run --appdir AppDir/ --plugin qt --output appimage

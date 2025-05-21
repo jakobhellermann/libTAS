@@ -1282,22 +1282,18 @@ static void writeAllAreas(bool base)
 /* Write a memory area into the savestate. Returns the size of the area in bytes */
 static size_t writeAnArea(SaveStateSaving &state, Area &area, int spmfd, SaveStateLoading &parent_state, SaveStateLoading &base_state, bool base)
 {
-    if (!(area.prot & PROT_READ)) {
-        MYASSERT(mprotect(area.addr, area.size, (area.prot | PROT_READ)) == 0)
-    }
-
     state.processArea(&area);
     size_t area_size = sizeof(area);
 
     if (area.skip || area.uncommitted) {
-        if (!(area.prot & PROT_READ)) {
-            MYASSERT(mprotect(area.addr, area.size, area.prot) == 0)
-        }
-
         return area_size;
     }
 
     area.print("Save");
+    if (!(area.prot & PROT_READ)) {
+        MYASSERT(mprotect(area.addr, area.size, (area.prot | PROT_READ)) == 0)
+    }
+
 
     /* Seek at the beginning of the area pagemap */
     MYASSERT(-1 != lseek(spmfd, static_cast<off_t>(reinterpret_cast<uintptr_t>(area.addr) / (4096/8)), SEEK_SET));

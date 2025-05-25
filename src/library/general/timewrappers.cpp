@@ -27,7 +27,7 @@
 #include "hook.h"
 #include "global.h"
 #include "checkpoint/ThreadManager.h" // isMainThread()
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <execinfo.h>
 #include <iomanip> // std::setw

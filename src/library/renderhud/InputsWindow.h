@@ -20,7 +20,7 @@
 #ifndef LIBTAS_IMGUI_INPUTSWINDOW_H_INCL
 #define LIBTAS_IMGUI_INPUTSWINDOW_H_INCL
 
-#include "../shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/AllInputsFlat.h"
 #include <string>
 
 namespace libtas {

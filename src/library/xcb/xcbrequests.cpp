@@ -30,8 +30,8 @@
 #include "xlib/xatom.h"
 #include "xlib/XlibGameWindow.h"
 #include "global.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <functional>
 

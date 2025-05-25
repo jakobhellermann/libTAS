@@ -20,10 +20,6 @@
 #ifndef LIBTAS_MAINWINDOW_H_INCLUDED
 #define LIBTAS_MAINWINDOW_H_INCLUDED
 
-#ifdef __unix__
-#include "config.h"
-#endif
-
 #include "GameLoop.h"
 #include "Context.h"
 

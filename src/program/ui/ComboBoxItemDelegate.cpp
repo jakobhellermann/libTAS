@@ -19,7 +19,7 @@
 
 #include "ComboBoxItemDelegate.h"
 #include "movie/MovieFile.h"
-#include "../shared/inputs/SingleInput.h"
+#include "shared/inputs/SingleInput.h"
 
 #include <QComboBox>
 

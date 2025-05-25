@@ -45,7 +45,7 @@
 #include "fileio/SaveFile.h"
 #include "fileio/SaveFileList.h"
 #include "renderhud/RenderHUD.h"
-#include "../shared/sockethelpers.h"
+#include "shared/sockethelpers.h"
 #ifdef __unix__
 #include "../external/xcb/xcbint.h"
 #include "xlib/xdisplay.h" // x11::gameDisplays

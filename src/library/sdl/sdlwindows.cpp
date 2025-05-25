@@ -37,9 +37,9 @@
 #include "checkpoint/ThreadManager.h"
 #include "global.h"
 #include "GlobalState.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
-#include "../shared/SharedConfig.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
+#include "shared/SharedConfig.h"
 
 namespace libtas {
 

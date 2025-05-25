@@ -24,7 +24,7 @@
 #include "DeterministicTimer.h"
 #include "fileio/FileHandleList.h"
 #include "global.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <algorithm>
 #include <cstring>

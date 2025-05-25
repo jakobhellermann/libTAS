@@ -21,7 +21,7 @@
 #define LIBTAS_MOVIEACTIONPAINT_H_INCLUDED
 
 #include "IMovieAction.h"
-#include "../shared/inputs/SingleInput.h"
+#include "shared/inputs/SingleInput.h"
 
 #include <cstdint>
 #include <vector>

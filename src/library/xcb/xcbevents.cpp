@@ -17,7 +17,6 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "xcbevents.h"
 #include "XcbEventQueueList.h"
 #include "xcbconnection.h" // x11::gameConnections

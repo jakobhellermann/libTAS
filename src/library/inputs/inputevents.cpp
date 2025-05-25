@@ -18,9 +18,6 @@
  */
 
 #include "inputevents.h"
-#ifdef __unix__
-#include "config.h"
-#endif
 #include "inputs.h"
 #include "keyboard_helper.h"
 #include "sdlgamecontroller.h" // sdl_controller_events
@@ -37,9 +34,9 @@
 #endif
 
 #include "logging.h"
-#include "../shared/inputs/AllInputsFlat.h"
-#include "../shared/inputs/SingleInput.h"
-#include "../shared/SharedConfig.h"
+#include "shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/SingleInput.h"
+#include "shared/SharedConfig.h"
 #include "DeterministicTimer.h"
 #include "sdl/SDLEventQueue.h"
 #include "../external/SDL1.h"

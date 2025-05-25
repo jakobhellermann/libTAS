@@ -17,9 +17,6 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef __unix__
-#include "config.h"
-#endif
 #include "GameLoop.h"
 #include "GameThread.h"
 #include "GameEvents.h"
@@ -43,11 +40,11 @@
 #include "ramsearch/BaseAddresses.h"
 #include "ui/InputEditorView.h"
 
-#include "../shared/sockethelpers.h"
-#include "../shared/SharedConfig.h"
-#include "../shared/messages.h"
-#include "../shared/inputs/AllInputs.h"
-#include "../shared/inputs/ControllerInputs.h"
+#include "shared/sockethelpers.h"
+#include "shared/SharedConfig.h"
+#include "shared/messages.h"
+#include "shared/inputs/AllInputs.h"
+#include "shared/inputs/ControllerInputs.h"
 
 #include <string>
 #include <iostream>

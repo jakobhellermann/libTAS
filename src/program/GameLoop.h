@@ -24,7 +24,7 @@
 #include <cstdint>
 
 #include "movie/MovieFile.h"
-#include "../shared/GameInfo.h"
+#include "shared/GameInfo.h"
 
 /* Forward declaration */
 class GameEvents;

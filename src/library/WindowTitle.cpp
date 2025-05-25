@@ -21,7 +21,7 @@
 #include "logging.h"
 #include "global.h" // Global::game_info
 #include "GlobalState.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <sstream>
 #include <math.h>

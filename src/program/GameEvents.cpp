@@ -23,9 +23,9 @@
 #include "SaveStateList.h"
 #include "movie/MovieFile.h"
 
-#include "../shared/sockethelpers.h"
-#include "../shared/SharedConfig.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/SharedConfig.h"
+#include "shared/messages.h"
 
 #include <string>
 #include <iostream>

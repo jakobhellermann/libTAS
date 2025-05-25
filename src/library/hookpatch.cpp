@@ -21,8 +21,8 @@
 #include "general/dlhook.h"
 #include "logging.h"
 #include "GlobalState.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <sys/mman.h>
 #include <string.h>

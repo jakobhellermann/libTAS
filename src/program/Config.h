@@ -20,7 +20,7 @@
 #ifndef LIBTAS_CONFIG_H_INCLUDED
 #define LIBTAS_CONFIG_H_INCLUDED
 
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <QtCore/QString>
 #include <string>

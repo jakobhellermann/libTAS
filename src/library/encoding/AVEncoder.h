@@ -20,6 +20,8 @@
 #ifndef LIBTAS_AVDUMPING_H_INCL
 #define LIBTAS_AVDUMPING_H_INCL
 
+#include <cstdint>
+
 #include "TimeHolder.h"
 
 #include <vector>

@@ -20,7 +20,7 @@
 #ifndef LIBTAS_MOVIEFILEEDITOR_H_INCLUDED
 #define LIBTAS_MOVIEFILEEDITOR_H_INCLUDED
 
-#include "../shared/inputs/SingleInput.h"
+#include "shared/inputs/SingleInput.h"
 
 #include <vector>
 #include <set>

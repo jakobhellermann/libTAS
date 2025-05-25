@@ -20,7 +20,7 @@
 #ifndef LIBTAS_CONTROLLERTABWINDOW_H_INCLUDED
 #define LIBTAS_CONTROLLERTABWINDOW_H_INCLUDED
 
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QCheckBox>

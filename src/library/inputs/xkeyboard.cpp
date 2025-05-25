@@ -24,7 +24,7 @@
 #include "logging.h"
 #include "xlib/XlibGameWindow.h"
 #include "GlobalState.h"
-#include "../shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/AllInputsFlat.h"
 
 #include <cstring> // memset
 

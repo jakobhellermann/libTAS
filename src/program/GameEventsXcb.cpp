@@ -22,8 +22,8 @@
 #include "GameEvents.h"
 #include "movie/MovieFile.h"
 
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>

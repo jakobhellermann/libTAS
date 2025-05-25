@@ -17,14 +17,13 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "XlibGameWindow.h"
 
 #include "logging.h"
 #include "screencapture/ScreenCapture.h"
 #include "global.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <list>
 #include <map>

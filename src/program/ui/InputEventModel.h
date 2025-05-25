@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-#include "../shared/inputs/InputEvent.h"
+#include "shared/inputs/InputEvent.h"
 
 /* Forward declaration */
 struct Context;

@@ -28,11 +28,11 @@
 
 #include "utils.h"
 #include "Context.h"
-#include "../shared/version.h"
-#include "../shared/inputs/AllInputs.h"
-#include "../shared/inputs/ControllerInputs.h"
-#include "../shared/inputs/MiscInputs.h"
-#include "../shared/inputs/MouseInputs.h"
+#include "shared/version.h"
+#include "shared/inputs/AllInputs.h"
+#include "shared/inputs/ControllerInputs.h"
+#include "shared/inputs/MiscInputs.h"
+#include "shared/inputs/MouseInputs.h"
 
 #include <QtCore/QSettings>
 #include <iostream>

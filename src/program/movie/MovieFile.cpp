@@ -19,7 +19,7 @@
 
 #include "MovieFile.h"
 
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 #include "Context.h"
 
 #include <sstream>

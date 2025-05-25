@@ -23,7 +23,7 @@
 #include "hookpatch.h"
 #include "logging.h"
 #include "DeterministicTimer.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <stdint.h>
 #include <inttypes.h>

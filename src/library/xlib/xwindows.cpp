@@ -17,7 +17,6 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "xwindows.h"
 #include "xevents.h"
 #include "xatom.h"
@@ -34,8 +33,8 @@
 #include "inputs/xinput.h"
 #include "global.h"
 #include "GlobalState.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 #include "../external/mwm.h"
 
 #include <vector>

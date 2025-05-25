@@ -20,7 +20,7 @@
 #ifndef LIBTAS_GAMEINFOWINDOW_H_INCLUDED
 #define LIBTAS_GAMEINFOWINDOW_H_INCLUDED
 
-#include "../shared/GameInfo.h"
+#include "shared/GameInfo.h"
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QLabel>

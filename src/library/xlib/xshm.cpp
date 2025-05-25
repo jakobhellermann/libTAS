@@ -28,8 +28,8 @@
 #include "renderhud/RenderHUD.h"
 #include "DeterministicTimer.h"
 #include "global.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 namespace libtas {
 

@@ -24,7 +24,7 @@
 
 #include "logging.h"
 #include "hook.h"
-#include "../shared/inputs/SingleInput.h"
+#include "shared/inputs/SingleInput.h"
 #include "global.h"
 #include "GlobalState.h"
 

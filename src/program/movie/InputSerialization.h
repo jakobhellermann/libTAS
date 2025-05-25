@@ -20,7 +20,7 @@
 #ifndef LIBTAS_INPUTSERIALIZATION_H_INCLUDED
 #define LIBTAS_INPUTSERIALIZATION_H_INCLUDED
 
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 #include <fstream>
 #include <string>

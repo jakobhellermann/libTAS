@@ -20,8 +20,8 @@
 #ifndef LIBTAS_GLOBAL_H_INCL
 #define LIBTAS_GLOBAL_H_INCL
 
-#include "../shared/SharedConfig.h"
-#include "../shared/GameInfo.h"
+#include "shared/SharedConfig.h"
+#include "shared/GameInfo.h"
 
 namespace libtas {
 

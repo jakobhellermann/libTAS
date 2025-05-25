@@ -27,8 +27,8 @@
 #include "screencapture/ScreenCapture.h"
 #include "xlib/XlibGameWindow.h"
 #include "global.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 namespace libtas {
 

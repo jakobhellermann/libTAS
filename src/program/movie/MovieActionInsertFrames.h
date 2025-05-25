@@ -21,7 +21,7 @@
 #define LIBTAS_MOVIEACTIONINSERTFRAMES_H_INCLUDED
 
 #include "IMovieAction.h"
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 #include <vector>
 #include <cstdint>

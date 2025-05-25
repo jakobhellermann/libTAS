@@ -21,7 +21,7 @@
 
 #include "Context.h"
 #include "movie/MovieFile.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 #include "settings/tooltip/ToolTipGroupBox.h"
 
 #include <QtWidgets/QLabel>

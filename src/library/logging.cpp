@@ -24,8 +24,8 @@
 #include "GlobalState.h"
 #include "backtrace.h"
 #include "renderhud/LogWindow.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <stdlib.h>
 #include <unistd.h> // For isatty

@@ -19,8 +19,9 @@
 
 #include "KeyMapping.h"
 #include "../external/keysymdef.h"
-#include "../shared/inputs/AllInputs.h"
-#include "../shared/SharedConfig.h"
+#include "shared/inputs/AllInputs.h"
+#include "shared/SharedConfig.h"
+#include <QtCore/QDataStream>
 
 #include <cstring>
 #include <iostream>

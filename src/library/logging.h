@@ -20,7 +20,7 @@
 #ifndef LIBTAS_LOGGING_H_INCL
 #define LIBTAS_LOGGING_H_INCL
 
-#include "../shared/lcf.h"
+#include "shared/lcf.h"
 //#include "PerfTimer.h"
 
 #include <string>

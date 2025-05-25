@@ -57,9 +57,9 @@
 #include "xlib/XlibEventQueueList.h"
 #include "xlib/XlibGameWindow.h"
 #endif
-#include "../shared/sockethelpers.h"
-#include "../shared/inputs/AllInputsFlat.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/inputs/AllInputsFlat.h"
+#include "shared/messages.h"
 
 #include <iomanip>
 #include <stdint.h>

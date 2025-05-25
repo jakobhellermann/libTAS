@@ -21,7 +21,7 @@
 #define LIBTAS_MOVIEFILEINPUTS_H_INCLUDED
 
 #include "ConcurrentQueue.h"
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 #include <QtCore/QObject>
 #include <fstream>

@@ -22,7 +22,7 @@
 #include "logging.h"
 #include "DeterministicTimer.h"
 #include "fileio/FileHandleList.h"
-#include "../shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/AllInputsFlat.h"
 #include "global.h"
 #include "GlobalState.h"
 

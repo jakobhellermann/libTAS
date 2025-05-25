@@ -17,15 +17,11 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef __unix__
-#include "config.h"
-#endif
-
 #ifndef LIBTAS_RENDERHUD_H_INCL
 #define LIBTAS_RENDERHUD_H_INCL
 
-#include "../shared/inputs/AllInputsFlat.h"
-#include "../shared/inputs/MouseInputs.h"
+#include "shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/MouseInputs.h"
 
 #include <memory>
 #include <list>

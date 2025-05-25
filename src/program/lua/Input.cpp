@@ -19,8 +19,8 @@
 
 #include "Input.h"
 
-#include "../shared/inputs/SingleInput.h"
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/SingleInput.h"
+#include "shared/inputs/AllInputs.h"
 
 #include <iostream>
 extern "C" {

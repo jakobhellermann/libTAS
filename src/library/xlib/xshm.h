@@ -20,8 +20,6 @@
 #ifndef LIBTAS_XSHM_H_INCL
 #define LIBTAS_XSHM_H_INCL
 
-#include "config.h"
-
 #include "hook.h"
 #include "../external/X11/XShm.h"
 

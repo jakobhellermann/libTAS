@@ -21,8 +21,8 @@
 #include "ControllerInputs.h"
 #include "MouseInputs.h"
 #include "MiscInputs.h"
-#include "../shared/messages.h"
-#include "../shared/sockethelpers.h"
+#include "shared/messages.h"
+#include "shared/sockethelpers.h"
 
 #include <iostream>
 

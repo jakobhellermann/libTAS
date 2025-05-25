@@ -24,7 +24,7 @@
 #include "sdl/sdlversion.h"
 #include "sdl/SDLEventQueue.h"
 #include "global.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <stdlib.h>
 

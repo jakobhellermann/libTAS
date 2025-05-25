@@ -20,7 +20,7 @@
 #ifndef LIBTAS_KEYMAPPING_H_INCLUDED
 #define LIBTAS_KEYMAPPING_H_INCLUDED
 
-#include "../shared/inputs/SingleInput.h"
+#include "shared/inputs/SingleInput.h"
 
 #include <QtCore/QDataStream>
 #include <map>

@@ -22,7 +22,7 @@
 #include "logging.h"
 #include "inputs/inputs.h"
 #include "global.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <string>
 #include <vector>

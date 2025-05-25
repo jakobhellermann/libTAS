@@ -28,8 +28,8 @@
 #include "DeterministicTimer.h"
 #include "backtrace.h"
 #include "xlib/XlibGameWindow.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 namespace libtas {
 

@@ -32,9 +32,9 @@
 #endif
 #include "checkpoint/MemArea.h"
 #include "renderhud/RenderHUD.h"
-#include "../shared/SharedConfig.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/SharedConfig.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 
 #include <dlfcn.h>

@@ -37,9 +37,9 @@
 #include "checkpoint/SaveStateManager.h"
 #include "checkpoint/Checkpoint.h"
 #include "sdl/sdldynapi.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
-#include "../shared/SharedConfig.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
+#include "shared/SharedConfig.h"
 
 #include <unistd.h> // getpid()
 #include <vector>

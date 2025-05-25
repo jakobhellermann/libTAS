@@ -21,7 +21,7 @@
 #define LIBTAS_DETERMINISTICTIMER_H_INCL
 
 #include "TimeHolder.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 #include <time.h>
 
 #include <mutex>

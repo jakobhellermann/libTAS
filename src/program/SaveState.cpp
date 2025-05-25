@@ -20,9 +20,9 @@
 #include "Context.h"
 #include "SaveState.h"
 #include "utils.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/SharedConfig.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/SharedConfig.h"
+#include "shared/messages.h"
 
 #include <iostream>
 #include <unistd.h> // access()

@@ -26,9 +26,9 @@
 #include "Context.h"
 #include "GameLoop.h"
 #include "GameEvents.h"
-#include "../shared/inputs/SingleInput.h"
-#include "../shared/inputs/AllInputs.h"
-#include "../shared/inputs/ControllerInputs.h"
+#include "shared/inputs/SingleInput.h"
+#include "shared/inputs/AllInputs.h"
+#include "shared/inputs/ControllerInputs.h"
 
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHBoxLayout>

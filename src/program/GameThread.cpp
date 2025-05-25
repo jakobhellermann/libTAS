@@ -21,7 +21,7 @@
 #include "AutoDetect.h"
 #include "utils.h"
 #include "Context.h"
-#include "../shared/SharedConfig.h"
+#include "shared/SharedConfig.h"
 
 #include <string>
 #include <sstream>

@@ -21,7 +21,7 @@
 #define LIBTAS_PERFTIMER_H_INCL
 
 #include "TimeHolder.h"
-#include "../shared/lcf.h"
+#include "shared/lcf.h"
 
 namespace libtas {
 

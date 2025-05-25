@@ -25,7 +25,7 @@
 #include "MovieActionRemoveFrames.h"
 
 #include "Context.h"
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 MovieFileChangeLog::MovieFileChangeLog(Context* c) : QUndoStack(), context(c)
 {

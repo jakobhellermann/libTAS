@@ -20,10 +20,10 @@
 #include "InputSerialization.h"
 
 #include "Context.h"
-#include "../shared/inputs/AllInputs.h"
-#include "../shared/inputs/ControllerInputs.h"
-#include "../shared/inputs/MiscInputs.h"
-#include "../shared/inputs/MouseInputs.h"
+#include "shared/inputs/AllInputs.h"
+#include "shared/inputs/ControllerInputs.h"
+#include "shared/inputs/MiscInputs.h"
+#include "shared/inputs/MouseInputs.h"
 
 #include <sstream>
 

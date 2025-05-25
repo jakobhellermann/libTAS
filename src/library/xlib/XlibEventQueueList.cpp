@@ -17,7 +17,6 @@
     along with libTAS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
 #include "XlibEventQueueList.h"
 
 #include "logging.h"

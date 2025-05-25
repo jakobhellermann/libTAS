@@ -42,7 +42,7 @@
 #include "utils.h"
 #include "GameEvents.h"
 #include "GameThread.h"
-#include "../shared/version.h"
+#include "shared/version.h"
 
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMenu>

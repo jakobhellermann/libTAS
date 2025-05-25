@@ -24,8 +24,8 @@
 #include "TimeHolder.h"
 #include "logging.h"
 #include "screencapture/ScreenCapture.h"
-#include "../shared/sockethelpers.h"
-#include "../shared/messages.h"
+#include "shared/sockethelpers.h"
+#include "shared/messages.h"
 
 #include <list>
 #include <utility>

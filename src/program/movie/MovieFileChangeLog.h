@@ -20,7 +20,7 @@
 #ifndef LIBTAS_MOVIEFILECHANGELOG_H_INCLUDED
 #define LIBTAS_MOVIEFILECHANGELOG_H_INCLUDED
 
-#include "../shared/inputs/AllInputs.h"
+#include "shared/inputs/AllInputs.h"
 
 #include "IMovieAction.h"
 

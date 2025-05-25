@@ -20,7 +20,7 @@
 #ifndef LIBTAS_IMGUI_CROSSHAIR_H_INCL
 #define LIBTAS_IMGUI_CROSSHAIR_H_INCL
 
-#include "../shared/inputs/AllInputsFlat.h"
+#include "shared/inputs/AllInputsFlat.h"
 
 namespace libtas {
 

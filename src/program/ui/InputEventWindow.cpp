@@ -22,7 +22,7 @@
 #include "ComboBoxItemDelegate.h"
 
 #include "Context.h"
-//#include "../shared/inputs/AllInputs.h"
+//#include "shared/inputs/AllInputs.h"
 #include "movie/MovieFile.h"
 
 #include <QtWidgets/QTableView>

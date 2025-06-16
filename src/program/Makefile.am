@@ -1,4 +1,34 @@
-bin_PROGRAMS = libTAS
+bin_PROGRAMS = libTAS libTAS_starter libTAS_reconnect
+
+libTAS_starter_SOURCES = \
+    starter.cpp \
+    Config.cpp \
+    GameThread.cpp \
+    AutoDetect.cpp \
+    KeyMapping.cpp \
+    ../shared/sockethelpers.cpp \
+    ../shared/inputs/AllInputs.cpp \
+    ../shared/inputs/MiscInputs.cpp \
+    ../shared/inputs/ControllerInputs.cpp \
+    ../shared/inputs/SingleInput.cpp \
+    ../shared/inputs/MouseInputs.cpp \
+    ../shared/messages.cpp \
+    utils.cpp
+
+libTAS_reconnect_SOURCES = \
+    reconnecter.cpp \
+    Config.cpp \
+    GameThread.cpp \
+    AutoDetect.cpp \
+    KeyMapping.cpp \
+    ../shared/sockethelpers.cpp \
+    ../shared/inputs/AllInputs.cpp \
+    ../shared/inputs/MiscInputs.cpp \
+    ../shared/inputs/ControllerInputs.cpp \
+    ../shared/inputs/SingleInput.cpp \
+    ../shared/inputs/MouseInputs.cpp \
+    ../shared/messages.cpp \
+    utils.cpp
 
 libTAS_QTSOURCES = \
     GameEvents.h \
@@ -202,6 +232,12 @@ libTAS_SOURCES = \
 
 libTAS_CXXFLAGS = $(QT5_CFLAGS) $(LIBLUA_CFLAGS) -fno-stack-protector -Wno-float-equal -fPIC -I$(top_srcdir)/src/external/qhexview/include
 libTAS_LDADD = $(QT5_LIBS) $(LIBLUA_LIBS) $(PROGRAM_LIBS)
+
+libTAS_starter_CXXFLAGS = $(QT5_CFLAGS) $(LIBLUA_CFLAGS) -fno-stack-protector -Wno-float-equal -fPIC -I$(top_srcdir)/src/external/qhexview/include -std=c++20
+libTAS_starter_LDADD = $(QT5_LIBS) $(LIBLUA_LIBS) $(PROGRAM_LIBS)
+
+libTAS_reconnect_CXXFLAGS = $(QT5_CFLAGS) $(LIBLUA_CFLAGS) -fno-stack-protector -Wno-float-equal -fPIC -I$(top_srcdir)/src/external/qhexview/include -std=c++20
+libTAS_reconnect_LDADD = $(QT5_LIBS) $(LIBLUA_LIBS) $(PROGRAM_LIBS)
 
 .h_moc.cpp:
 	@MOC@ -o $@ $(QT5_CFLAGS) $<

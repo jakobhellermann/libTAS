@@ -302,7 +302,7 @@ int receiveMessageNonBlocking()
     if (ret < 0)
         return ret;
 #ifdef LIBTAS_LIBRARY
-    LOG(LL_DEBUG, LCF_SOCKET, "Receive non-blocking socket message %d", msg);
+    LOG(LL_DEBUG, LCF_SOCKET, "Receive non-blocking socket message: %s", get_message_name(msg));
 #endif
 
     /* Handle special case for closed socket */

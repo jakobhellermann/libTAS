@@ -27,6 +27,10 @@
 #include <iostream>
 #include <cstring>
 
+#include "logging.h"
+
+using namespace libtas;
+
 void AllInputsFlat::clear() {
     memset(keyboard.data(), 0, sizeof(uint32_t)*keyboard.size());
     pointer.clear();
@@ -66,6 +70,9 @@ void AllInputsFlat::recv()
                 receiveData(&size, sizeof(int));
                 events.resize(size);
                 receiveData(events.data(), size*sizeof(InputEvent));
+                break;
+            default:
+                LOG(LL_ERROR, LCF_ALL, "Unknown message: %s", get_message_name(message));
                 break;
         }
         message = receiveMessage();

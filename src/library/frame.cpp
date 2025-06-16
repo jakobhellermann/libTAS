@@ -63,6 +63,8 @@
 #include <iomanip>
 #include <stdint.h>
 
+#include "main.h"
+
 namespace libtas {
 
 DECLARE_ORIG_POINTER(SDL_PumpEvents)
@@ -134,9 +136,14 @@ static void sendFrameCountTime()
 {
     /* Detect an error on the first send, and exit the game if so */
     int ret = sendMessage(MSGB_FRAMECOUNT_TIME);
-    if (ret == -1)
-        exit(1);
-        
+    if (ret == -1) {
+        LOG(LL_INFO, LCF_ALL, "Reaccepting socket...");
+        acceptSocketGame();
+        LOG(LL_INFO, LCF_ALL, "Reaccepting socket done");
+        sendInitMessages();
+        LOG(LL_INFO, LCF_ALL, "Init messages done");
+    }
+
     sendData(&framecount, sizeof(uint64_t));
     struct timespec ticks = DeterministicTimer::get().getTicks(SharedConfig::TIMETYPE_UNTRACKED_MONOTONIC);
     uint64_t ticks_val = ticks.tv_sec;

@@ -49,6 +49,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h> // XSetWMName
 
+#include "logging.h"
+
 namespace libtas {
 
 bool RenderHUD::show_game_window = false;

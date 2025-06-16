@@ -33,6 +33,7 @@ bool initSocketProgram(pid_t fork_pid);
 #else
 /* Initiate a socket connection with libTAS */
 bool initSocketGame(void);
+void acceptSocketGame(void);
 #endif
 
 /* Close the socket connection */

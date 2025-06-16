@@ -38,6 +38,8 @@
 #include <mutex>
 #include <errno.h>
 
+#include "messages.h"
+
 
 #define SOCKET_FILENAME "/tmp/libTAS.socket"
 
@@ -51,6 +53,8 @@ using namespace libtas;
 
 /* Socket to communicate between the program and the game */
 static int socket_fd = 0;
+
+static int tmp_fd = 0;
 
 static std::mutex mutex;
 
@@ -88,12 +92,14 @@ bool initSocketProgram(pid_t fork_pid)
         }
         
         /* Check if game is still running */
-        int ret = waitpid(fork_pid, nullptr, WNOHANG);
-        if (ret == fork_pid) {
-            std::cout << "Game couldn't start properly." << std::endl;
-            return false;
+        if (fork_pid != 0) {
+            int ret = waitpid(fork_pid, nullptr, WNOHANG);
+            if (ret == fork_pid) {
+                std::cout << "Game couldn't start properly." << std::endl;
+                return false;
+            }
         }
-        
+
         tim.tv_nsec *= 1.5;
         if (tim.tv_nsec >= 1000000000) {            
             tim.tv_sec++;
@@ -107,42 +113,13 @@ bool initSocketProgram(pid_t fork_pid)
 
 #else
 
-bool initSocketGame(void)
-{
-    GlobalNative gn;
-    
-    /* Check if socket file already exists. If so, it is probably because
-     * the link is already done in another process of the game.
-     * In this case, we just return immediately.
-     */
-    struct stat st;
-    int result = stat(SOCKET_FILENAME, &st);
-    if (result == 0)
-        return false;
-
-#ifdef __unix__
-    const struct sockaddr_un addr = { AF_UNIX, SOCKET_FILENAME };
-#elif defined(__APPLE__) && defined(__MACH__)
-    const struct sockaddr_un addr = { sizeof(struct sockaddr_un), AF_UNIX, SOCKET_FILENAME };
-#endif
-    const int tmp_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (bind(tmp_fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(struct sockaddr_un)))
-    {
-        LOG(LL_ERROR, LCF_SOCKET, "Couldn't bind client socket %s", strerror(errno));
-        exit(-1);
-    }
-
-    if (listen(tmp_fd, 1))
-    {
-        LOG(LL_ERROR, LCF_SOCKET, "Couldn't listen on client socket %s", strerror(errno));
-        exit(-1);
-    }
-
+void acceptSocketGame(void) {
     if ((socket_fd = accept(tmp_fd, NULL, NULL)) < 0)
     {
         LOG(LL_ERROR, LCF_SOCKET, "Couldn't accept client connection %s", strerror(errno));
         exit(-1);
     }
+    LOG(LL_INFO, LCF_SOCKET, "Accepted to client socket");
 
     /* Don't generate SIGPIPE */
 #if defined(__APPLE__) && defined(__MACH__)
@@ -153,8 +130,48 @@ bool initSocketGame(void)
         exit(-1);
     }
 #endif
+}
+
+bool initSocketGame(void)
+{
+    GlobalNative gn;
     
-    close(tmp_fd);
+    /* Check if socket file already exists. If so, it is probably because
+     * the link is already done in another process of the game.
+     * In this case, we just return immediately.
+     */
+    struct stat st;
+    int result = stat(SOCKET_FILENAME, &st);
+
+    if (result == 0) {
+        std::cout << "Socket " << SOCKET_FILENAME << " already exists: " << result << std::endl;
+        return false;
+    }
+
+#ifdef __unix__
+    const struct sockaddr_un addr = { AF_UNIX, SOCKET_FILENAME };
+#elif defined(__APPLE__) && defined(__MACH__)
+    const struct sockaddr_un addr = { sizeof(struct sockaddr_un), AF_UNIX, SOCKET_FILENAME };
+#endif
+    tmp_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (bind(tmp_fd, reinterpret_cast<const struct sockaddr*>(&addr), sizeof(struct sockaddr_un)))
+    {
+        LOG(LL_ERROR, LCF_SOCKET, "Couldn't bind client socket %s", strerror(errno));
+        exit(-1);
+    }
+    LOG(LL_INFO, LCF_SOCKET, "Bound to client socket");
+
+    if (listen(tmp_fd, 1))
+    {
+        LOG(LL_ERROR, LCF_SOCKET, "Couldn't listen on client socket");
+        exit(-1);
+    }
+    LOG(LL_INFO, LCF_SOCKET, "Listen to client socket");
+
+    acceptSocketGame();
+    LOG(LL_INFO, LCF_SOCKET, "Accepted client socket");
+
+    // close(tmp_fd);
     return true;
 }
 
@@ -210,7 +227,7 @@ int sendData(const void* elem, unsigned int size)
 int sendMessage(int message)
 {
 #ifdef LIBTAS_LIBRARY
-    LOG(LL_DEBUG, LCF_SOCKET, "Send socket message %d", message);
+    LOG(LL_DEBUG, LCF_SOCKET, "Send socket message %s", get_message_name(message));
 #endif
     return sendData(&message, sizeof(int));
 }
@@ -250,6 +267,7 @@ int receiveData(void* elem, unsigned int size)
 #else
         std::cerr << "recv() returns 0 -> socket closed" << std::endl;
 #endif
+        exit(-1);
     }
     else if (ret != static_cast<ssize_t>(size)) {
 #ifdef LIBTAS_LIBRARY
@@ -266,7 +284,7 @@ int receiveMessage()
     int msg;
     int ret = receiveData(&msg, sizeof(int));
 #ifdef LIBTAS_LIBRARY
-    LOG(LL_DEBUG, LCF_SOCKET, "Receive socket message %d", msg);
+    LOG(LL_DEBUG, LCF_SOCKET, "Receive socket message %s", get_message_name(msg));
 #endif
     /* Handle special case for closed socket */
     if (ret == 0)

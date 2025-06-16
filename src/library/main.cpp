@@ -50,50 +50,7 @@ extern char**environ;
 
 namespace libtas {
 
-void __attribute__((constructor)) init(void)
-{
-    /* If LIBTAS_DELAY_INIT env variable is > 0, skip initialization and
-     * decrease env variable value */
-    char* delay_str;
-    NATIVECALL(delay_str = getenv("LIBTAS_DELAY_INIT"));
-    if (delay_str && (delay_str[0] > '0')) {
-        delay_str[0] -= 1;
-        setenv("LIBTAS_DELAY_INIT", delay_str, 1);
-        LOG(LL_INFO, LCF_NONE, "Skipping libtas init");
-
-        /* Setting native state so that we interact as little as possible
-         * with the process */
-        GlobalState::setNative(true);
-
-        return;
-    }
-
-    /* Hacking `environ` to disable LD_PRELOAD for future processes */
-    /* Taken from <https://stackoverflow.com/a/3275799> */
-    for (int i=0; environ[i]; i++) {
-        if ( strstr(environ[i], "LD_PRELOAD=") ) {
-             environ[i][0] = 'D';
-        }
-        if ( strstr(environ[i], "LD_LIBRARY_PATH=") ) {
-             environ[i][0] = 'D';
-        }
-        if ( strstr(environ[i], "DYLD_INSERT_LIBRARIES=") ) {
-            environ[i][0] = 'Y';
-        }
-        if ( strstr(environ[i], "DYLD_FORCE_FLAT_NAMESPACE=") ) {
-            environ[i][0] = 'Y';
-        }
-    }
-
-    /* Allow future gdb instances to debug this process */
-    prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
-
-    ThreadManager::init();
-    SaveStateManager::init();
-    Stack::grow();
-
-    initSocketGame();
-
+void sendInitMessages() {
     /* Send information to the program */
 
     /* Send game process pid */
@@ -185,8 +142,9 @@ void __attribute__((constructor)) init(void)
                 break;
             }
             default:
-                LOG(LL_ERROR, LCF_SOCKET, "Unknown socket message %d", message);
-                exit(1);
+                LOG(LL_ERROR, LCF_SOCKET, "Unknown init socket message %d", message);
+                // exit(1);
+                break;
         }
         message = receiveMessage();
     }
@@ -205,11 +163,57 @@ void __attribute__((constructor)) init(void)
     /* Initialize sound parameters */
     AudioContext::get().init();
 
-    hook_mono();
+    // hook_mono();
+}
+
+void __attribute__((constructor)) init(void) {
+    Global::shared_config.logging_level = LL_INFO;
+
+    /* If LIBTAS_DELAY_INIT env variable is > 0, skip initialization and
+     * decrease env variable value */
+    char* delay_str;
+    NATIVECALL(delay_str = getenv("LIBTAS_DELAY_INIT"));
+    if (delay_str && (delay_str[0] > '0')) {
+        delay_str[0] -= 1;
+        setenv("LIBTAS_DELAY_INIT", delay_str, 1);
+        LOG(LL_INFO, LCF_NONE, "Skipping libtas init");
+
+        /* Setting native state so that we interact as little as possible
+         * with the process */
+        GlobalState::setNative(true);
+
+        return;
+    }
+
+    /* Hacking `environ` to disable LD_PRELOAD for future processes */
+    /* Taken from <https://stackoverflow.com/a/3275799> */
+    for (int i=0; environ[i]; i++) {
+        if ( strstr(environ[i], "LD_PRELOAD=") ) {
+            environ[i][0] = 'D';
+        }
+        if ( strstr(environ[i], "LD_LIBRARY_PATH=") ) {
+            environ[i][0] = 'D';
+        }
+        if ( strstr(environ[i], "DYLD_INSERT_LIBRARIES=") ) {
+            environ[i][0] = 'Y';
+        }
+        if ( strstr(environ[i], "DYLD_FORCE_FLAT_NAMESPACE=") ) {
+            environ[i][0] = 'Y';
+        }
+    }
+
+    /* Allow future gdb instances to debug this process */
+    prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+
+    ThreadManager::init();
+    SaveStateManager::init();
+    Stack::grow();
+
+    initSocketGame();
+    sendInitMessages();
 
     Global::is_inited = true;
 }
-
 void __attribute__((destructor)) term(void)
 {
     if (Global::is_inited) {

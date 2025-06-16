@@ -20,373 +20,381 @@
 #ifndef LIBTAS_MESSAGES_H_INCLUDED
 #define LIBTAS_MESSAGES_H_INCLUDED
 
+#include "message_x.h"
+
+const char *get_message_name(int id);
+
 /* List of message identification values that is sent from/to the game */
 enum {
-    /*
-     * The game notices the program that he reached a frame boundary.
-     * Argument: none
-     */
-    MSGB_START_FRAMEBOUNDARY,
+#define X(name) name,
+    MSG_ID
+#undef X
 
-    /*
-     * The program sent all messages at the beginning of the frame boundary.
-     * Argument: none
-     */
-    MSGN_START_FRAMEBOUNDARY,
+    // /*
+    //  * The game notices the program that he reached a frame boundary.
+    //  * Argument: none
+    //  */
+    // MSGB_START_FRAMEBOUNDARY,
 
-    /*
-     * The game sends the frame number, monotonic and realtime
-     * Argument: 5 uint64_t
-     */
-    MSGB_FRAMECOUNT_TIME,
+    // /*
+    //  * The program sent all messages at the beginning of the frame boundary.
+    //  * Argument: none
+    //  */
+    // MSGN_START_FRAMEBOUNDARY,
 
-    /*
-     * Send all inputs to the game
-     * Argument: AllInputs
-     */
-    MSGN_ALL_INPUTS,
+    // /*
+    //  * The game sends the frame number, monotonic and realtime
+    //  * Argument: 5 uint64_t
+    //  */
+    // MSGB_FRAMECOUNT_TIME,
 
-    /*
-     * Send pointer inputs
-     * Argument: MouseInputs
-     */
-    MSGN_POINTER_INPUTS,
-    
-    /*
-     * Send pointer inputs to be scaled by the game, when game window is detached
-     * Argument: MouseInputs
-     */
-    MSGN_SCALE_POINTER_INPUTS,
-    
-    /*
-     * Send misc inputs
-     * Argument: MiscInputs
-     */
-    MSGN_MISC_INPUTS,
+    // /*
+    //  * Send all inputs to the game
+    //  * Argument: AllInputs
+    //  */
+    // MSGN_ALL_INPUTS,
 
-    /*
-     * Send event inputs
-     * Argument: size and vector
-     */
-    MSGN_EVENT_INPUTS,
-    
-    /*
-     * Send a controller id and inputs
-     * Argument: int, ControllerInputs
-     */
-    MSGN_CONTROLLER_INPUTS,
+    // /*
+    //  * Send pointer inputs
+    //  * Argument: MouseInputs
+    //  */
+    // MSGN_POINTER_INPUTS,
+    //
+    // /*
+    //  * Send pointer inputs to be scaled by the game, when game window is detached
+    //  * Argument: MouseInputs
+    //  */
+    // MSGN_SCALE_POINTER_INPUTS,
+    //
+    // /*
+    //  * Send misc inputs
+    //  * Argument: MiscInputs
+    //  */
+    // MSGN_MISC_INPUTS,
 
-    /*
-     * Notify the end of input sending
-     * Argument: non
-     */
-    MSGN_END_INPUTS,
+    // /*
+    //  * Send event inputs
+    //  * Argument: size and vector
+    //  */
+    // MSGN_EVENT_INPUTS,
+    //
+    // /*
+    //  * Send a controller id and inputs
+    //  * Argument: int, ControllerInputs
+    //  */
+    // MSGN_CONTROLLER_INPUTS,
 
-    /*
-     * Send all inputs to the game during a frame boundary, so that it can
-     * display the inputs in the HUD
-     * Argument: AllInputs
-     */
-    MSGN_PREVIEW_INPUTS,
+    // /*
+    //  * Notify the end of input sending
+    //  * Argument: non
+    //  */
+    // MSGN_END_INPUTS,
 
-    /*
-     * Send config struct size
-     * Argument: int
-     */
-    MSGN_CONFIG_SIZE,
+    // /*
+    //  * Send all inputs to the game during a frame boundary, so that it can
+    //  * display the inputs in the HUD
+    //  * Argument: AllInputs
+    //  */
+    // MSGN_PREVIEW_INPUTS,
 
-    /*
-     * Send config
-     * Argument: struct SharedConfig
-     */
-    MSGN_CONFIG,
+    // /*
+    //  * Send config struct size
+    //  * Argument: int
+    //  */
+    // MSGN_CONFIG_SIZE,
 
-    /*
-     * Send initial framecount and time. Non-zero when restarting
-     * Argument: 3 uint64_t
-     */
-    MSGN_INITIAL_FRAMECOUNT_TIME,
+    // /*
+    //  * Send config
+    //  * Argument: struct SharedConfig
+    //  */
+    // MSGN_CONFIG,
 
-    /*
-     * The programs tells the game to end the frame boundary
-     * Argument: none
-     */
-    MSGN_END_FRAMEBOUNDARY,
+    // /*
+    //  * Send initial framecount and time. Non-zero when restarting
+    //  * Argument: 3 uint64_t
+    //  */
+    // MSGN_INITIAL_FRAMECOUNT_TIME,
 
-    /*
-     * The game tells the program that he has quit
-     * Argument: none
-     */
-    MSGB_QUIT,
+    // /*
+    //  * The programs tells the game to end the frame boundary
+    //  * Argument: none
+    //  */
+    // MSGN_END_FRAMEBOUNDARY,
 
-    /*
-     * The program tells the game that the user has requested a quit
-     * Argument: none
-     */
-    MSGN_USERQUIT,
+    // /*
+    //  * The game tells the program that he has quit
+    //  * Argument: none
+    //  */
+    // MSGB_QUIT,
 
-    /*
-     * Send the game pid so that the program can attach to it, and address size
-     * Arguments: pid_t, int
-     */
-    MSGB_PID_ARCH,
+    // /*
+    //  * The program tells the game that the user has requested a quit
+    //  * Argument: none
+    //  */
+    // MSGN_USERQUIT,
 
-    /*
-     * Notice the program of the end of initialization messages
-     * Argument: none
-     */
-    MSGB_END_INIT,
+    // /*
+    //  * Send the game pid so that the program can attach to it, and address size
+    //  * Arguments: pid_t, int
+    //  */
+    // MSGB_PID_ARCH,
 
-    /*
-     * Notice the game of the end of initialization messages
-     * Argument: none
-     */
-    MSGN_END_INIT,
+    // /*
+    //  * Notice the program of the end of initialization messages
+    //  * Argument: none
+    //  */
+    // MSGB_END_INIT,
 
-    /*
-     * Send the dump file to the game
-     * Arguments: size_t (string length) then char[len]
-     */
-    MSGN_DUMP_FILE,
+    // /*
+    //  * Notice the game of the end of initialization messages
+    //  * Argument: none
+    //  */
+    // MSGN_END_INIT,
 
-    /*
-     * Send the X11 window identifier of the game to the program
-     * Argument: int
-     */
-    MSGB_WINDOW_ID,
+    // /*
+    //  * Send the dump file to the game
+    //  * Arguments: size_t (string length) then char[len]
+    //  */
+    // MSGN_DUMP_FILE,
 
-    /*
-     * Send an alert message to be prompted by the program
-     * Arguments: size_t (string length) then char[len]
-     */
-    MSGB_ALERT_MSG,
+    // /*
+    //  * Send the X11 window identifier of the game to the program
+    //  * Argument: int
+    //  */
+    // MSGB_WINDOW_ID,
 
-    /*
-     * Send a message to be displayed on the game screen
-     * Arguments: size_t (string length) then char[len]
-     */
-    MSGN_OSD_MSG,
+    // /*
+    //  * Send an alert message to be prompted by the program
+    //  * Arguments: size_t (string length) then char[len]
+    //  */
+    // MSGB_ALERT_MSG,
 
-    /*
-     * Ask the game to make a savestate
-     * Argument: none
-     */
-    MSGN_SAVESTATE,
+    // /*
+    //  * Send a message to be displayed on the game screen
+    //  * Arguments: size_t (string length) then char[len]
+    //  */
+    // MSGN_OSD_MSG,
 
-    /*
-     * Ask the game to load a savestate
-     * Argument: none
-     */
-    MSGN_LOADSTATE,
+    // /*
+    //  * Ask the game to make a savestate
+    //  * Argument: none
+    //  */
+    // MSGN_SAVESTATE,
 
-    /*
-     * Tells the program that the saving succeeded
-     * Argument: none
-     */
-    MSGB_SAVING_SUCCEEDED,
+    // /*
+    //  * Ask the game to load a savestate
+    //  * Argument: none
+    //  */
+    // MSGN_LOADSTATE,
 
-    /*
-     * Tells the program that the loading succeeded
-     * Argument: none
-     */
-    MSGB_LOADING_SUCCEEDED,
+    // /*
+    //  * Tells the program that the saving succeeded
+    //  * Argument: none
+    //  */
+    // MSGB_SAVING_SUCCEEDED,
 
-    /*
-     * Send to the game the path of the savestate
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_SAVESTATE_PATH,
+    // /*
+    //  * Tells the program that the loading succeeded
+    //  * Argument: none
+    //  */
+    // MSGB_LOADING_SUCCEEDED,
 
-    /*
-     * Send to the game the path of the base savestate
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_BASE_SAVESTATE_PATH,
+    // /*
+    //  * Send to the game the path of the savestate
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_SAVESTATE_PATH,
 
-    /*
-     * Send to the game the index of the savestate
-     * Argument: int
-     */
-    MSGN_SAVESTATE_INDEX,
+    // /*
+    //  * Send to the game the path of the base savestate
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_BASE_SAVESTATE_PATH,
 
-    /*
-     * Send to the game the index of the base savestate
-     * Argument: int
-     */
-    MSGN_BASE_SAVESTATE_INDEX,
+    // /*
+    //  * Send to the game the index of the savestate
+    //  * Argument: int
+    //  */
+    // MSGN_SAVESTATE_INDEX,
 
-    /*
-     * Notify the program that encoding failed
-     * Arguments: none
-     */
-    MSGB_ENCODE_FAILED,
+    // /*
+    //  * Send to the game the index of the base savestate
+    //  * Argument: int
+    //  */
+    // MSGN_BASE_SAVESTATE_INDEX,
 
-    /*
-     * Notify the game that we must stop encoding
-     * Arguments: none
-     */
-    MSGN_STOP_ENCODE,
+    // /*
+    //  * Notify the program that encoding failed
+    //  * Arguments: none
+    //  */
+    // MSGB_ENCODE_FAILED,
 
-    /*
-     * Send game information to the program
-     * Arguments: 3 strings
-     */
-    MSGB_GAMEINFO,
+    // /*
+    //  * Notify the game that we must stop encoding
+    //  * Arguments: none
+    //  */
+    // MSGN_STOP_ENCODE,
 
-    /*
-     * Notify the game that it must redrawn the screen
-     * Arguments: none
-     */
-    MSGN_EXPOSE,
+    // /*
+    //  * Send game information to the program
+    //  * Arguments: 3 strings
+    //  */
+    // MSGB_GAMEINFO,
 
-    /*
-     * Send fps and logical fps values to the program
-     * Arguments: 2 floats
-     */
-    MSGB_FPS,
+    // /*
+    //  * Notify the game that it must redrawn the screen
+    //  * Arguments: none
+    //  */
+    // MSGN_EXPOSE,
 
-    /*
-     * Send ramwatch string to display on OSD
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_RAMWATCH,
+    // /*
+    //  * Send fps and logical fps values to the program
+    //  * Arguments: 2 floats
+    //  */
+    // MSGB_FPS,
 
-    /*
-     * Send the current segment of video encoding to the program.
-     * Argument: int
-     */
-    MSGB_ENCODING_SEGMENT,
+    // /*
+    //  * Send ramwatch string to display on OSD
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_RAMWATCH,
 
-    /*
-     * Send the current segment of video encoding to the game.
-     * Argument: int
-     */
-    MSGN_ENCODING_SEGMENT,
+    // /*
+    //  * Send the current segment of video encoding to the program.
+    //  * Argument: int
+    //  */
+    // MSGB_ENCODING_SEGMENT,
 
-    /*
-     * Send to the game the location of the Steam user data folder.
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_STEAM_USER_DATA_PATH,
+    // /*
+    //  * Send the current segment of video encoding to the game.
+    //  * Argument: int
+    //  */
+    // MSGN_ENCODING_SEGMENT,
 
-    /*
-     * Send to the game the location of the game's Steam remote storage path.
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_STEAM_REMOTE_STORAGE,
+    // /*
+    //  * Send to the game the location of the Steam user data folder.
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_STEAM_USER_DATA_PATH,
 
-    /*
-     * Send the git commit hash.
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGB_GIT_COMMIT,
+    // /*
+    //  * Send to the game the location of the game's Steam remote storage path.
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_STEAM_REMOTE_STORAGE,
 
-    /*
-     * Send the hash and backtrace of a gettime function.
-     * Argument: uint64_t then size_t (string length) then char[len]
-     */
-    MSGB_GETTIME_BACKTRACE,
+    // /*
+    //  * Send the git commit hash.
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGB_GIT_COMMIT,
 
-    /*
-     * Indicate that the current frame is a non-draw frame.
-     * Argument: None
-     */
-    MSGB_NONDRAW_FRAME,
+    // /*
+    //  * Send the hash and backtrace of a gettime function.
+    //  * Argument: uint64_t then size_t (string length) then char[len]
+    //  */
+    // MSGB_GETTIME_BACKTRACE,
 
-    /*
-     * Indicate that the current frame will not be rendered due to fast-forward.
-     * Argument: None
-     */
-    MSGB_SKIPDRAW_FRAME,
+    // /*
+    //  * Indicate that the current frame is a non-draw frame.
+    //  * Argument: None
+    //  */
+    // MSGB_NONDRAW_FRAME,
 
-    /*
-     * Send to the game a text to be displayed from a lua script.
-     * Argument: float x, float y, string text, uint32_t color, float anchor_x
-     *           float anchor_y, float font_size, bool monospace
-     */
-    MSGN_LUA_TEXT,
+    // /*
+    //  * Indicate that the current frame will not be rendered due to fast-forward.
+    //  * Argument: None
+    //  */
+    // MSGB_SKIPDRAW_FRAME,
 
-    /*
-     * Send to the game a text to be displayed inside a window.
-     * Argument: float x, float y, string id, string text
-     */
-    MSGN_LUA_WINDOW,
+    // /*
+    //  * Send to the game a text to be displayed from a lua script.
+    //  * Argument: float x, float y, string text, uint32_t color, float anchor_x
+    //  *           float anchor_y, float font_size, bool monospace
+    //  */
+    // MSGN_LUA_TEXT,
 
-    /*
-     * Send to the game a pixel to be displayed from a lua script.
-     * Argument: float x, float y, uint32_t color
-     */
-    MSGN_LUA_PIXEL,
+    // /*
+    //  * Send to the game a text to be displayed inside a window.
+    //  * Argument: float x, float y, string id, string text
+    //  */
+    // MSGN_LUA_WINDOW,
 
-    /*
-     * Send to the game a rectangle to be displayed from a lua script.
-     * Argument: float x, float y, float w, float h, float thickness,
-     *           uint32_t color, uint32_t filled
-     */
-    MSGN_LUA_RECT,
+    // /*
+    //  * Send to the game a pixel to be displayed from a lua script.
+    //  * Argument: float x, float y, uint32_t color
+    //  */
+    // MSGN_LUA_PIXEL,
 
-    /*
-     * Send to the game a line to be displayed from a lua script.
-     * Argument: float x0, float y0, float x1, float y1, uint32_t color
-     */
-    MSGN_LUA_LINE,
+    // /*
+    //  * Send to the game a rectangle to be displayed from a lua script.
+    //  * Argument: float x, float y, float w, float h, float thickness,
+    //  *           uint32_t color, uint32_t filled
+    //  */
+    // MSGN_LUA_RECT,
 
-    /*
-     * Send to the game a line to be displayed from a lua script.
-     * Argument: float x0, float y0, float x1, float y1,
-     *           float x2, float y2, float x3, float y3,
-     *           float thickness, uint32_t color, uint32_t filled
-     */
-    MSGN_LUA_QUAD,
+    // /*
+    //  * Send to the game a line to be displayed from a lua script.
+    //  * Argument: float x0, float y0, float x1, float y1, uint32_t color
+    //  */
+    // MSGN_LUA_LINE,
 
-    /*
-     * Send to the game a line to be displayed from a lua script.
-     * Argument: float center_x, float center_y, float radius_x, float radius_y,
-     *           float thickness, uint32_t color, uint32_t filled
-     */
-    MSGN_LUA_ELLIPSE,
+    // /*
+    //  * Send to the game a line to be displayed from a lua script.
+    //  * Argument: float x0, float y0, float x1, float y1,
+    //  *           float x2, float y2, float x3, float y3,
+    //  *           float thickness, uint32_t color, uint32_t filled
+    //  */
+    // MSGN_LUA_QUAD,
 
-    /*
-     * Ask the game to send the screen resolution.
-     * Argument: None
-     */
-    MSGN_LUA_RESOLUTION,
+    // /*
+    //  * Send to the game a line to be displayed from a lua script.
+    //  * Argument: float center_x, float center_y, float radius_x, float radius_y,
+    //  *           float thickness, uint32_t color, uint32_t filled
+    //  */
+    // MSGN_LUA_ELLIPSE,
 
-    /*
-     * Send screen resolution to the program
-     * Argument: int w, int h
-     */
-    MSGB_LUA_RESOLUTION,
+    // /*
+    //  * Ask the game to send the screen resolution.
+    //  * Argument: None
+    //  */
+    // MSGN_LUA_RESOLUTION,
 
-    /*
-     * Send the name of a symbol, to retreive its address in executable
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGB_SYMBOL_ADDRESS,
+    // /*
+    //  * Send screen resolution to the program
+    //  * Argument: int w, int h
+    //  */
+    // MSGB_LUA_RESOLUTION,
 
-    /*
-     * Send marker string to display on OSD
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_MARKER,
+    // /*
+    //  * Send the name of a symbol, to retreive its address in executable
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGB_SYMBOL_ADDRESS,
 
-    /*
-     * Send a screenshot path and ask the game to perform a screenshot, 
-     * Argument: size_t (string length) then char[len]
-     */
-    MSGN_SCREENSHOT,
-    
-    /* Send the address of the SDL_DYNAPI_entry() function within the game
-     * executable if present
-     * Argument: uint64_t addr
-     */
-    MSGN_SDL_DYNAPI_ADDR,
+    // /*
+    //  * Send marker string to display on OSD
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_MARKER,
 
-    /* Send the address of the UnityClassic::Baselib_SystemFutex_Wait() function
-     * within the UnityPlayer.so library file if present
-     * Argument: uint64_t addr
-     */
-    MSGN_UNITY_WAIT_ADDR,
+    // /*
+    //  * Send a screenshot path and ask the game to perform a screenshot,
+    //  * Argument: size_t (string length) then char[len]
+    //  */
+    // MSGN_SCREENSHOT,
+    //
+    // /* Send the address of the SDL_DYNAPI_entry() function within the game
+    //  * executable if present
+    //  * Argument: uint64_t addr
+    //  */
+    // MSGN_SDL_DYNAPI_ADDR,
+
+    // /* Send the address of the UnityClassic::Baselib_SystemFutex_Wait() function
+    //  * within the UnityPlayer.so library file if present
+    //  * Argument: uint64_t addr
+    //  */
+    // MSGN_UNITY_WAIT_ADDR,
 };
 
 #endif

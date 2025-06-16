@@ -34,6 +34,7 @@ struct LuaShape
 {
     virtual void render(ImDrawList* draw_list, ImVec2 offset, float scale) = 0;
     virtual bool isInbound() = 0;
+    virtual ~LuaShape() = default;
 };
 
 struct LuaText : public LuaShape

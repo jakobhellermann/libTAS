@@ -46,6 +46,8 @@ public:
     /* Get the resampled buffer into `outSamples` that has a size of `outNbSamples` samples.
      * Returns the actual number of samples from the resampler output. */
     virtual int getSamples(uint8_t* outSamples, int outNbSamples) = 0;
+
+    virtual ~AudioConverter() = default;
 };
 }
 

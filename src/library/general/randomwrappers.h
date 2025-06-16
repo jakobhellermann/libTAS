@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdlib>
 #include <sys/types.h> // ssize_t
 
 namespace libtas {

@@ -93,20 +93,6 @@ OVERRIDE const char *SDL_GameControllerNameForIndex(int joystick_index);
  */
 OVERRIDE char *SDL_GameControllerMappingForDeviceIndex(int joystick_index);
 
-typedef enum
-{
-    SDL_CONTROLLER_TYPE_UNKNOWN = 0,
-    SDL_CONTROLLER_TYPE_XBOX360,
-    SDL_CONTROLLER_TYPE_XBOXONE,
-    SDL_CONTROLLER_TYPE_PS3,
-    SDL_CONTROLLER_TYPE_PS4,
-    SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO,
-    SDL_CONTROLLER_TYPE_VIRTUAL,
-    SDL_CONTROLLER_TYPE_PS5,
-    SDL_CONTROLLER_TYPE_AMAZON_LUNA,
-    SDL_CONTROLLER_TYPE_GOOGLE_STADIA
-} SDL_GameControllerType;
-
 /**
  * Get the type of a game controller.
  *
@@ -243,14 +229,6 @@ OVERRIDE SDL_bool SDL_GameControllerHasButton(SDL_GameController *gamecontroller
  */
 OVERRIDE Uint8 SDL_GameControllerGetButton(SDL_GameController *gamecontroller,
                                                  SDL_GameControllerButton button);
-
-typedef enum
-{
-    SDL_SENSOR_INVALID = -1,    /**< Returned for an invalid sensor */
-    SDL_SENSOR_UNKNOWN,         /**< Unknown sensor type */
-    SDL_SENSOR_ACCEL,           /**< Accelerometer */
-    SDL_SENSOR_GYRO             /**< Gyroscope */
-} SDL_SensorType;
 
 /**
  * Return whether a game controller has a particular sensor.

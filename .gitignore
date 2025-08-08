@@ -9,6 +9,8 @@ debian/libtas.debhelper.log
 debian/libtas.substvars
 debian/autoreconf.after
 debian/autoreconf.before
+AppDir
+*.AppImage
 
 autom4te.cache
 aclocal.m4

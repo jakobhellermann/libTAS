@@ -29,7 +29,7 @@
 
 namespace libtas {
 
-UnityDebug::ScrollingBuffer::ScrollingBuffer(int max_size = 400) {
+UnityDebug::ScrollingBuffer::ScrollingBuffer(int max_size) {
     MaxSize = max_size;
     Offset  = 0;
     DataX.reserve(MaxSize);

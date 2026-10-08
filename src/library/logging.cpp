@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <unistd.h> // For isatty
+#include <cerrno>
 #include <cstdarg>
 #include <cstring>
 #include <inttypes.h> // PRI stuff
@@ -96,8 +97,11 @@ void debuglogfull(LogLevel ll, LogCategoryFlag lcf, const char* file, int line, 
     char s[2048] = {'\0'};
     int size = 0;
 
-    /* We only print colors if displayed on a terminal */
+    /* We only print colors if displayed on a terminal.
+     * isatty sets errno on failure, which shouldn't impact hooks with debug logging */
+    int saved_errno = errno;
     bool isTerm = isatty(STDERR_FILENO);
+    errno = saved_errno;
     if (isTerm) {
         /* Write the header text in white */
         strncat(s, ANSI_COLOR_LIGHT_GRAY, maxsize-size-1);

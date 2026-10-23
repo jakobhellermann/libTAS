@@ -140,6 +140,11 @@ struct Context {
     
     /* PID of the appimage process that mounts the appimage structure */
     pid_t appimage_pid = 0;
+
+    /* GPU host process, its runtime directory and our end of its control connection */
+    pid_t kumquat_pid = 0;
+    std::filesystem::path kumquat_dir;
+    int kumquat_control = -1;
     
     /* Detected game engine */
     int engine;

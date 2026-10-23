@@ -170,6 +170,8 @@ void Config::save(const std::filesystem::path& gamepath) {
     settings.setValue("mouse_warp", mouse_warp);
     settings.setValue("use_proton", use_proton);
     settings.setValue("proton_path", proton_path.c_str());
+    settings.setValue("kumquat_path", kumquat_path.c_str());
+    settings.setValue("gfxstream_icd", gfxstream_icd.c_str());
 
     settings.remove("env_overrides");
     settings.beginWriteArray("env_overrides");
@@ -393,6 +395,8 @@ void Config::load(const std::filesystem::path& gamepath) {
     mouse_warp = settings.value("mouse_warp", mouse_warp).toBool();
     use_proton = settings.value("use_proton", use_proton).toBool();
     proton_path = settings.value("proton_path", "").toString().toStdString();
+    kumquat_path = settings.value("kumquat_path", "").toString().toStdString();
+    gfxstream_icd = settings.value("gfxstream_icd", "").toString().toStdString();
 
     env_overrides.clear();
     size = settings.beginReadArray("env_overrides");

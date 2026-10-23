@@ -57,7 +57,7 @@ private:
     /* PID of the forked `sh` process which executes the game */
     pid_t fork_pid;
 
-    void init();
+    bool init();
 
     void initProcessMessages();
 

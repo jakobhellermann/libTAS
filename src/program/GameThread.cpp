@@ -21,6 +21,7 @@
 #include "AutoDetect.h"
 #include "utils.h"
 #include "Context.h"
+#include "GpuHost.h"
 #include "../shared/SharedConfig.h"
 
 #include <string>
@@ -84,6 +85,9 @@ void GameThread::set_env_variables(Context *context, int gameArch)
          * state cannot rewind. */
         // TODO alternative queue one OUT_OF_DATE swapchain to invalidate xshmfence mappings
         appendEnvList("MESA_VK_WSI_DEBUG", "noshm");
+        break;
+    case SharedConfig::RENDERING_GPU_HOST:
+        GpuHost::setGameEnv(context);
         break;
     }
 

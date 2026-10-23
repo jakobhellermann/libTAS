@@ -18,6 +18,7 @@
  */
 
 #include "FileHandleList.h"
+#include "checkpoint/GpuHost.h"
 #include "FileHandle.h"
 #include "FileDescriptorManip.h"
 #include "SaveFile.h"
@@ -508,6 +509,9 @@ void syncFileDescriptors()
                     /* The two fds are consecutive, we skip processing the next fd value */
                     fd++;
                 }
+            }
+            else if (GpuHost::restoresFd(fd)) {
+                LOG(LL_DEBUG, LCF_CHECKPOINT | LCF_FILEIO, "File %s with fd %d is restored by the GPU host", fh.fileName, fd);
             }
             else {
                 LOG(LL_ERROR, LCF_CHECKPOINT | LCF_FILEIO, "Non-standard file %s is supposed to be opened after state loaded", fh.fileName);

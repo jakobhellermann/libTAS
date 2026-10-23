@@ -18,6 +18,7 @@
  */
 
 #include "utils.h"
+#include "GpuHost.h"
 #include "Context.h"
 
 #include <sys/stat.h>
@@ -40,6 +41,7 @@ void remove_savestates(Context* context)
         savestatepspath += ".state" + std::to_string(i) + ".p";
         std::filesystem::remove(savestatepspath);
     }
+    GpuHost::removeSnapshots();
 }
 
 int extractBinaryType(std::filesystem::path path)

@@ -97,6 +97,7 @@ void VideoPane::initLayout()
     rendModeChoice = new ToolTipComboBox();
     rendModeChoice->addItem(tr("Native (unsafe savestates)"), SharedConfig::RENDERING_NATIVE);
     rendModeChoice->addItem(tr("Software"), SharedConfig::RENDERING_SOFTWARE);
+    rendModeChoice->addItem(tr("Forwarded GPU"), SharedConfig::RENDERING_GPU_HOST);
 
     rendQualityChoice = new ToolTipComboBox();
     rendQualityChoice->addItem(tr("Normal"), SharedConfig::OPENGL_QUALITY_NORMAL);
@@ -150,7 +151,8 @@ void VideoPane::initToolTips()
     rendModeChoice->setDescription("How the game renders. Native uses the system's "
     "driver inside the game, which savestates cannot restore. Software uses Mesa's "
     "OpenGL/Vulkan software drivers, which needs Mesa to already be used for rendering. "
-    "You should get a warning popup at game startup if the "
+    "GPU host renders on the real GPU in a separate kumquat process, and savestates "
+    "snapshot its state. You should get a warning popup at game startup if the "
     "renderer does not match."
     "<br><br><em>If unsure, select Software</em>");
 

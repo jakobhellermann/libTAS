@@ -88,6 +88,10 @@ void checkMesa()
         mode = "Software";
         expected = "llvmpipe";
         break;
+    case SharedConfig::RENDERING_GPU_HOST:
+        mode = "GPU host";
+        expected = "GFXStream";
+        break;
     }
     if (expected && (strstr(renderer, expected) == nullptr)) {
         std::string alertMsg = std::string(mode) + " rendering was selected, but the OpenGL renderer currently used (";

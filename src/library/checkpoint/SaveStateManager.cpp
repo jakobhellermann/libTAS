@@ -23,6 +23,7 @@
 #include "ThreadManager.h"
 #include "ThreadSync.h"
 #include "Checkpoint.h"
+#include "GpuHost.h"
 #include "xcb/xcbrequests.h"
 #include "general/mallocwrappers.h"
 #include "AltStack.h"
@@ -403,6 +404,8 @@ int SaveStateManager::checkpoint(int slot)
      */
     FileHandleList::trackAllFiles();
 
+    GpuHost::startSnapshot(slot);
+
     /* We set the alternate stack to our reserved memory. The game might
      * register its own alternate stack, so we set our own just before the
      * checkpoint and we restore the game's alternate stack just after.
@@ -427,6 +430,12 @@ int SaveStateManager::checkpoint(int slot)
 
     /* Restoring the game alternate stack (if any) */
     AltStack::restoreStack();
+
+    bool gpu_saved = true;
+    if (restoreInProgress)
+        GpuHost::finishRestore();
+    else
+        gpu_saved = GpuHost::finishSnapshot();
 
     /* We recover the offset of all opened files. This must also be done BEFORE
      * resuming threads.
@@ -466,6 +475,12 @@ int SaveStateManager::checkpoint(int slot)
     /* Mark the savestate as dirty in case of fork savestate */
     if (!restoreInProgress)
         stateStatus(slot, true);
+
+    /* Loading the memory without kumquat's state would leave the game broken */
+    if (!gpu_saved) {
+        Checkpoint::discardState();
+        return ESTATE_GPUHOST;
+    }
 
     return ESTATE_OK;
 }
@@ -540,6 +555,8 @@ int SaveStateManager::restore(int slot)
      */
     AltStack::prepareStack();
 
+    GpuHost::startRestore(slot);
+
     /* Here is where we load all the memory and stuff */
     raise(sig_checkpoint);
 
@@ -553,6 +570,12 @@ int SaveStateManager::restore(int slot)
 
     /* If restore was not done, we return here */
     LOG(LL_DEBUG, LCF_CHECKPOINT, "Restoring was not done, resuming threads");
+
+    if (GpuHost::active()) {
+        /* kumquat restored a state the game did not load */
+        LOG(LL_FATAL, LCF_CHECKPOINT, "Restoring failed after the GPU host restored its state");
+        abort();
+    }
 
     /* Restoring the game alternate stack (if any) */
     AltStack::restoreStack();
@@ -1018,6 +1041,7 @@ void SaveStateManager::printError(int err)
         "Savestate does not exist",
         "Loading not allowed because new threads were created",
         "State still saving",
+        "GPU host could not save the state, it was discarded",
         0 };
 
     if (err < 0) {

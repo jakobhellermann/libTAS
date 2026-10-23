@@ -177,6 +177,12 @@ void Checkpoint::setBaseSavestatePath(std::string path)
     basepagespath[1023] = '\0';
 }
 
+void Checkpoint::discardState()
+{
+    unlink(pagemappath);
+    unlink(pagespath);
+}
+
 void Checkpoint::setSavestateIndex(int index)
 {
     ss_index = index;

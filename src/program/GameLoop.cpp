@@ -22,6 +22,7 @@
 #endif
 #include "GameLoop.h"
 #include "GameThread.h"
+#include "GpuHost.h"
 #include "GameEvents.h"
 #include "AutoDetect.h"
 #include "UnityPatching.h"
@@ -73,7 +74,8 @@ GameLoop::GameLoop(Context* c) : movie(MovieFile(c)), context(c)
 
 void GameLoop::start()
 {
-    init();
+    if (!init())
+        return;
     initProcessMessages();
 
     Lua::Callbacks::call(Lua::NamedLuaFunction::CallbackStartup);
@@ -176,7 +178,7 @@ void GameLoop::start()
     }
 }
 
-void GameLoop::init()
+bool GameLoop::init()
 {
     /* Unvalidate the game pid */
     context->game_pid = 0;
@@ -260,6 +262,18 @@ void GameLoop::init()
 
     /* We fork here so that the child process calls the game. This is done after,
      * loading the movie so that it benefits from the movie settings. */
+    if (GpuHost::enabled(context)) {
+        std::string error = GpuHost::start(context);
+        if (!error.empty()) {
+            std::cerr << error << std::endl;
+            emit alertToShow(QString::fromStdString(error));
+            movie.close();
+            context->status = Context::INACTIVE;
+            emit statusChanged(Context::INACTIVE);
+            return false;
+        }
+    }
+
     fork_pid = fork();
     if (fork_pid == 0) {
         GameThread::launch(context);
@@ -295,6 +309,7 @@ void GameLoop::init()
     context->config.sc.write_savefiles_on_exit =
         (context->config.sc.recording != SharedConfig::NO_RECORDING) &&
         (context->config.auto_restart);
+    return true;
 }
 
 void GameLoop::initProcessMessages()
@@ -881,6 +896,8 @@ void GameLoop::loopExit()
         kill(context->appimage_pid, SIGINT);
         context->appimage_pid = 0;
     }
+
+    GpuHost::stop(context);
 
     /* We need to restart the game if we got a restart input, or if:
      * - auto-restart is set

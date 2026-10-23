@@ -232,6 +232,15 @@ int AutoDetect::game_engine(Context *context)
             std::cout << "   Could not detect version " << std::endl;
 
         addEngineArg(context, "-force-gfx-direct", "-force-gfx-direct");
+
+        /* Render directly on the GPU host's Vulkan driver instead of GL through zink.
+         * Unity versions without Vulkan ignore it, and a graphics API in the game arguments wins. */
+        const std::string& args = context->config.gameargs;
+        bool api_chosen = args.find("-force-gl") != std::string::npos ||
+                          args.find("-force-opengl") != std::string::npos ||
+                          args.find("-force-vulkan") != std::string::npos;
+        if (context->config.sc.rendering == SharedConfig::RENDERING_GPU_HOST && !api_chosen)
+            addEngineArg(context, "-force-vulkan", "-force-vulkan");
         
         return ENGINE_UNITY;
     }

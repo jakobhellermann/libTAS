@@ -161,6 +161,10 @@ public:
     /* Proton absolute path */
     std::filesystem::path proton_path;
 
+    /* GPU host programs for the GPU host rendering mode */
+    std::filesystem::path kumquat_path;
+    std::filesystem::path gfxstream_icd;
+
     /* Strace events, passed as [-e expr] */
     std::string strace_events;
 

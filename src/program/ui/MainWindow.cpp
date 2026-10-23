@@ -49,6 +49,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QVBoxLayout>
@@ -822,6 +823,9 @@ void MainWindow::updateStatus(int status)
             stopButton->setEnabled(false);
 
             updateMovieParams();
+
+            if (!context->interactive)
+                qApp->quit();
             break;
 
         case Context::STARTING:

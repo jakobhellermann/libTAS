@@ -564,10 +564,6 @@ bool GameLoop::startFrameMessages()
             break;
         }
         case MSGB_QUIT:
-            if (!context->interactive) {
-                /* Exit the program when game has exit */
-                exit(0);
-            }
             return true;
         case -1:
             std::cerr << "The connection to the game was lost. Exiting" << std::endl;

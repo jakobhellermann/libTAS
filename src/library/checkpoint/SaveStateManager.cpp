@@ -23,6 +23,7 @@
 #include "ThreadManager.h"
 #include "ThreadSync.h"
 #include "Checkpoint.h"
+#include "xcb/xcbrequests.h"
 #include "AltStack.h"
 #include "ReservedMemory.h"
 #include "ThreadInfo.h"
@@ -334,6 +335,8 @@ int SaveStateManager::checkpoint(int slot)
     AltStack::saveStack();
 
 #ifdef __unix__
+    XcbRequestGate::close();
+
     /* Lock the display so we can empty events */
     lockGameDisplays();
 #endif
@@ -442,6 +445,10 @@ int SaveStateManager::checkpoint(int slot)
 
     resumeThreads();
 
+#ifdef __unix__
+    XcbRequestGate::open();
+#endif
+
     ThreadSync::releaseLocks();
 
     /* Mark the savestate as dirty in case of fork savestate */
@@ -486,6 +493,8 @@ int SaveStateManager::restore(int slot)
     restoreInProgress = false;
 
 #ifdef __unix__
+    XcbRequestGate::close();
+
     /* Lock the display so we can empty events */
     lockGameDisplays();
 
@@ -549,6 +558,10 @@ int SaveStateManager::restore(int slot)
 #endif
 
     resumeThreads();
+
+#ifdef __unix__
+    XcbRequestGate::open();
+#endif
 
     ThreadSync::releaseLocks();
 

@@ -236,8 +236,14 @@ bool GameEventsXcb::haveFocus()
     xcb_generic_error_t* error;
     xcb_get_input_focus_cookie_t focus_cookie = xcb_get_input_focus(context->conn);
     xcb_get_input_focus_reply_t* focus_reply = xcb_get_input_focus_reply(context->conn, focus_cookie, &error);
-    if (error) {
-        std::cerr << "Could not get focussed window, X error" << error->error_code << std::endl;
+    if (!focus_reply) {
+        /* GetInputFocus has no arguments to fail on: the X server is gone */
+        if (error)
+            std::cerr << "Could not get focussed window, X error " << static_cast<int>(error->error_code) << std::endl;
+        else
+            std::cerr << "Lost the connection to the X server" << std::endl;
+        free(error);
+        _exit(1);
     }
 
     focus_window = focus_reply->focus;

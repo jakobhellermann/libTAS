@@ -1174,7 +1174,11 @@ static void writeAllAreas(bool base)
     while (not_eof) {
         if ((area.flags & Area::AREA_SHARED) && (previous_area.flags & Area::AREA_SHARED) &&
             (0 == strncmp(area.name, previous_area.name, Area::FILENAMESIZE)) &&
-            (area.offset == previous_area.offset) && 
+            /* Distinct files can share a name, like memfds */
+            (area.devmajor == previous_area.devmajor) &&
+            (area.devminor == previous_area.devminor) &&
+            (area.inodenum == previous_area.inodenum) &&
+            (area.offset == previous_area.offset) &&
             (area.size == previous_area.size)) {
             area.skip = true;    
         }

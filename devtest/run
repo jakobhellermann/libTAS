@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+"""Run libTAS savestate tests headless and compare the game's TEST: lines exactly.
+
+Each test is tests/<name>.c (the game), tests/<name>.lua (drives save/load) and
+tests/<name>.expected (the TEST: lines the game must print). A run blocks until libTAS
+exits; a FAIL line kills the session at once, a hang is killed after --timeout with the
+stacks of every process in the session written to the log.
+
+Modes:
+  soft  lavapipe through libTAS' default software rendering
+  zink  like soft, with GL through zink on lavapipe
+"""
+
+import argparse
+import os
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+DEVTEST = Path(__file__).resolve().parent
+ROOT = DEVTEST.parent
+# Own build dir: the checkout's build/ is configured against another source tree.
+BUILD = ROOT / "build-devtest"
+OUT = DEVTEST / "out"
+TESTS = DEVTEST / "tests"
+# Short, so that socket paths below it stay within the Unix socket limit.
+HOMES = Path.home() / ".cache/libtas-devtest"
+# Known libTAS validation errors that do not fail a test, but are reported with its result.
+KNOWN_VUIDS = {
+    # libTAS enables swapchain_maintenance1 without surface_maintenance1 and its feature.
+    "VUID-vkCreateDevice-ppEnabledExtensionNames-01387",
+    "VUID-VkPresentInfoKHR-swapchainMaintenance1-10158",
+    # zink frees present semaphores by batch completion, not by re-acquiring the image, so
+    # sparse presents (fastforward_render=1) reuse one before VVL considers it free.
+    "VUID-vkQueueSubmit-pSignalSemaphores-00067",
+}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("filter", nargs="?", default="", help="substring of test names")
+    parser.add_argument("--mode", choices=("soft", "zink"), default="soft")
+    parser.add_argument("--savestate-settings", type=int, default=0,
+                        help="libTAS savestate_settings flags (16: skip unmapped pages)")
+    parser.add_argument("--display", choices=("xvfb", "weston"), default="xvfb",
+                        help="X server: Xvfb, or Xwayland with DRI3 under headless weston")
+    parser.add_argument("--update", action="store_true", help="write the TEST: lines as expected output")
+    parser.add_argument("--timeout", type=float, default=60.0, help="seconds per test")
+    parser.add_argument("--idle-timeout", type=float, default=20.0, help="seconds without output that count as a hang")
+    parser.add_argument("--tag", default="", help="suffix of the log names, for parallel runs")
+    parser.add_argument("--no-build", action="store_true", help="skip building libTAS, for parallel runs")
+    parser.add_argument("--keep", action="store_true", help="leave a hung session running for debugging")
+    parser.add_argument("--nocapture", action="store_true", help="also echo the session output live")
+    parser.add_argument("--api-dump", action="store_true", help="also record the game's Vulkan calls next to the log")
+    parser.add_argument("--mesa-prefix", type=Path, help="load the game's GL (libGLX_mesa) from this Mesa install")
+    args = parser.parse_args()
+
+    OUT.mkdir(exist_ok=True)
+    if not args.no_build:
+        build_libtas()
+    tests = sorted(p.stem for p in TESTS.glob("*.c") if args.filter in p.stem)
+    if not tests:
+        sys.exit(f"no test matches {args.filter!r}")
+
+    env = session_env()
+    failed = []
+    for name in tests:
+        ok = run_test(name, args, env)
+        failed += [] if ok else [name]
+    print(f"\n{len(tests) - len(failed)}/{len(tests)} passed ({args.mode})")
+    if failed:
+        print("failed: " + " ".join(failed))
+        sys.exit(1)
+
+
+def build_libtas():
+    log = OUT / "build.log"
+    with log.open("w") as f:
+        ret = subprocess.run(["make", "-C", str(BUILD), f"-j{os.cpu_count()}"], stdout=f, stderr=subprocess.STDOUT)
+    if ret.returncode != 0:
+        print(tail(log, 40))
+        sys.exit(f"libTAS build failed, see {log}")
+
+
+def compile_test(name):
+    exe = OUT / name
+    src = TESTS / f"{name}.c"
+    # Tests include each other, so any newer test source rebuilds.
+    newest_src = max(p.stat().st_mtime for p in TESTS.glob("*.c"))
+    if exe.exists() and exe.stat().st_mtime >= newest_src:
+        return exe
+    link_flags = []
+    for line in src.read_text().splitlines():
+        if line.startswith("//# link_flags:"):
+            link_flags = line.split(":", 1)[1].split()
+    subprocess.run(["cc", "-O1", "-g", "-Wall", "-o", str(exe), str(src), "-lX11", "-ldl", *link_flags], check=True)
+    return exe
+
+
+def session_env():
+    env = dict(os.environ)
+    env.pop("WAYLAND_DISPLAY", None)
+    return env
+
+
+def run_test(name, args, base_env):
+    exe = compile_test(name)
+    log = OUT / f"{name}.{args.mode}.{args.display}{'.' + args.tag if args.tag else ''}.log"
+    # Outside /tmp, which each session gets privately, and on disk: it holds the savestates.
+    HOMES.mkdir(parents=True, exist_ok=True)
+    home = Path(tempfile.mkdtemp(prefix=f"{name}-", dir=HOMES))
+    env = dict(base_env)
+    # Tests fail when a driver silently falls back to another device.
+    env["TEST_EXPECT_VK"] = "llvmpipe"
+    env["TEST_EXPECT_GL"] = {"soft": "llvmpipe", "zink": "zink"}[args.mode]
+    if args.mesa_prefix and not (args.mesa_prefix / "lib/libGLX_mesa.so.0").exists():
+        sys.exit(f"no lib/libGLX_mesa.so.0 in {args.mesa_prefix}")
+    if args.mode == "zink":
+        # On top of software rendering (lavapipe, LIBGL_ALWAYS_SOFTWARE), which zink needs to pick a CPU device.
+        env["MESA_LOADER_DRIVER_OVERRIDE"] = "zink"
+    # Fresh libTAS config and savestate directories per run.
+    env["XDG_CONFIG_HOME"] = str(home / "config")
+    env["XDG_DATA_HOME"] = str(home / "data")
+    # Pre-answers the download question, a modal dialog even with -n.
+    (home / "config/libTAS").mkdir(parents=True)
+    (home / "config/libTAS/libTAS.ini").write_text("[General]\nallow_downloads=0\n")
+    # Only the game gets the validation layer: libTAS sets these overrides last for it.
+    # VVL's internal waits end at steady_clock::now() + 120 s, which under libTAS' frozen
+    # game time (starting at 1 s) is already in the real past, so they time out at once
+    # and report in-use false positives.
+    # Quoted: QSettings reads an unquoted value with a comma as a list.
+    overrides = [("VK_LOADER_LAYERS_ENABLE", '"*validation,*api_dump"' if args.api_dump else "*validation"),
+                 ("VK_QUEUE_THREAD_DEFAULT_TIMEOUT", "2000000000")]
+    # Only for the game: Xvfb would load this Mesa too.
+    if args.mesa_prefix:
+        overrides.append(("LD_LIBRARY_PATH", str(args.mesa_prefix.resolve() / "lib")))
+    if args.api_dump:
+        overrides += [("VK_APIDUMP_FILE", "true"), ("VK_APIDUMP_LOG_FILENAME", str(home / "apidump.txt"))]
+    (home / "config/libTAS" / f"{exe.name}.ini").write_text(
+        "[env_overrides]\n"
+        + "".join(f"{i}\\name={k}\n{i}\\value={v}\n" for i, (k, v) in enumerate(overrides, 1))
+        + f"size={len(overrides)}\n")
+
+    libtas = [
+        str(BUILD / "src/program/libTAS"),
+        "-n",
+        "--libtas-so-path", str(BUILD / "src/library/libtas.so"),
+        "-w", str(home / "movie.ltm"),
+        "-l", str(TESTS / f"{name}.lua"),
+        "-s", "logging_status=1",
+        "-s", "logging_level=3",
+        "-s", f"savestate_settings={args.savestate_settings}",
+        # Present every frame like normal play, so presents overlap with savestates.
+        "-s", "fastforward_render=0",
+        # The game writes the dump itself; prevent_savefiles would keep it in memory.
+        *(["-s", "prevent_savefiles=0"] if args.api_dump else []),
+        *test_settings(name),
+        str(exe),
+    ]
+    exit_file = home / "libtas-exit-code"
+    cmd = private_tmp(display_command(args.display, libtas, home, exit_file))
+
+    print(f"--- {name} ({args.mode}, {args.display})", flush=True)
+    start_wall = time.time()
+    start = time.monotonic()
+    proc = subprocess.Popen(cmd, env=env, cwd=home, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            start_new_session=True)
+    lines, verdict, known = [], "runner interrupted", []
+    try:
+        lines, verdict, known = collect(proc, log, args)
+    finally:
+        if args.keep and verdict and verdict.startswith(("no output", "timeout")):
+            print(f"    kept hung session {proc.pid}: pids {session_pids(proc.pid)}; kill with: kill -9 -{proc.pid}")
+        else:
+            kill_session(proc)
+    elapsed = time.monotonic() - start
+    if args.display == "weston":
+        for leftover in Path(os.environ["XDG_RUNTIME_DIR"]).glob(f"wayland-libtas-{home.name}*"):
+            leftover.unlink()
+
+    if (home / "apidump.txt").exists():
+        shutil.copy(home / "apidump.txt", log.with_suffix(".apidump.txt"))
+
+    crashes = coredumps_since(start_wall, {str(exe), str(BUILD / "src/program/libTAS")})
+    if crashes:
+        with log.open("a") as f:
+            f.write("\n=== CORE DUMPS ===\n" + crashes)
+        verdict = (verdict + "; " if verdict else "") + "core dump (stack in log)"
+
+    got = [l for l in lines if l.startswith("TEST: ")]
+    expected_path = TESTS / f"{name}.expected"
+    if args.update and verdict is None:
+        expected_path.write_text("".join(l + "\n" for l in got))
+        print(f"    updated {expected_path.name} ({len(got)} lines)")
+    if verdict is None:
+        if args.display == "weston":
+            returncode = int(exit_file.read_text()) if exit_file.exists() else None
+        else:
+            returncode = proc.returncode
+        if returncode != 0:
+            verdict = f"libTAS exited with {returncode}"
+        elif not expected_path.exists():
+            verdict = f"missing {expected_path.name} (run with --update)"
+        else:
+            expected = expected_path.read_text().splitlines()
+            if got != expected:
+                verdict = "output differs:\n" + diff(expected, got)
+    if verdict is None:
+        print(f"    PASS {elapsed:.1f}s  log {log}")
+        if known:
+            print(f"      {len(known)} known validation errors: {', '.join(sorted(set(known)))}")
+        shutil.rmtree(home)
+        return True
+    print(f"    FAIL {elapsed:.1f}s: {verdict}")
+    # Later runs overwrite the log; keep failures.
+    failed = OUT / "failed" / f"{log.stem}.{time.strftime('%Y%m%d-%H%M%S')}.{os.getpid()}.log"
+    failed.parent.mkdir(exist_ok=True)
+    shutil.copy(log, failed)
+    print(f"    kept {failed}")
+    print(f"    log {log}; last lines:")
+    print(tail(log, 25, indent="      "))
+    return False
+
+
+def private_tmp(cmd):
+    """Runs cmd with its own /tmp, as libTAS uses the fixed socket /tmp/libTAS.socket.
+
+    Mounting needs root in a user namespace; the command then runs as our own uid again.
+    """
+    script = f'mount -t tmpfs tmpfs /tmp && mkdir -m 1777 /tmp/.X11-unix && uid=$1 gid=$2 && shift 2 && exec unshare --user --map-user="$uid" --map-group="$gid" "$@"'
+    return ["unshare", "-rm", "sh", "-c", script, "sh", str(os.getuid()), str(os.getgid()), *cmd]
+
+
+def display_command(display, libtas, home, exit_file):
+    if display == "xvfb":
+        return ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24", *libtas]
+    # weston starts libTAS once Xwayland is up and exits with it; the wrapper keeps libTAS' exit code.
+    wrapper = home / "launch-libtas"
+    wrapper.write_text("#!/bin/sh\n" + " ".join(shlex.quote(a) for a in libtas)
+                       + f"\necho $? > {shlex.quote(str(exit_file))}\n")
+    wrapper.chmod(0o755)
+    ini = home / "weston.ini"
+    ini.write_text(f"[core]\nxwayland=true\n[autolaunch]\npath={wrapper}\nwatch=true\n")
+    return ["weston", "--backend=headless", "--renderer=gl", f"--config={ini}",
+            f"--socket=wayland-libtas-{home.name}"]
+
+
+def collect(proc, log, args):
+    """Streams the session output into the log until exit, a FAIL line or the timeout."""
+    lines = []
+    verdict = None
+    validation_errors = []
+    known = []
+    deadline = time.monotonic() + args.timeout
+    idle_deadline = time.monotonic() + args.idle_timeout
+    os.set_blocking(proc.stdout.fileno(), False)
+    pending = b""
+    with log.open("w") as f:
+        while True:
+            now = time.monotonic()
+            if now >= deadline or now >= idle_deadline:
+                verdict = (f"timeout after {args.timeout:.0f}s" if now >= deadline
+                           else f"no output for {args.idle_timeout:.0f}s") + " (stacks in log)"
+                f.write(f"\n=== HANG: stacks of session {proc.pid} ===\n")
+                f.write(session_stacks(proc.pid))
+                break
+            ready = wait_readable(proc.stdout.fileno(), min(deadline, idle_deadline) - now)
+            if not ready:
+                continue
+            chunk = proc.stdout.read()
+            if not chunk:
+                break
+            idle_deadline = time.monotonic() + args.idle_timeout
+            pending += chunk
+            *complete, pending = pending.split(b"\n")
+            for raw in complete:
+                line = raw.decode(errors="replace")
+                f.write(line + "\n")
+                lines.append(line)
+                if args.nocapture:
+                    print("      " + line, flush=True)
+                if line.startswith("TEST: FAIL"):
+                    verdict = line
+                if "did not terminate within" in line and not verdict:
+                    verdict = line.strip()
+                # libTAS logs errors it continues after, as "ERROR (file:line)".
+                if "] ERROR (" in line and not verdict:
+                    verdict = line.strip()
+                if line.startswith("Validation Error"):
+                    vuid = line.split("[ ", 1)[-1].split(" ]", 1)[0]
+                    if vuid in KNOWN_VUIDS:
+                        known.append(vuid)
+                    else:
+                        validation_errors.append(line)
+                # libTAS stays in its event loop after losing the game, even with -n.
+                if "The connection to the game was lost" in line or "The connection to the game was closed" in line:
+                    verdict = "game died"
+            f.flush()
+            if verdict:
+                break
+        if pending:
+            f.write(pending.decode(errors="replace") + "\n")
+    if validation_errors and not verdict:
+        verdict = f"{len(validation_errors)} validation errors, first: {validation_errors[0]}"
+    return lines, verdict, known
+
+
+def wait_readable(fd, timeout):
+    import select
+    readable, _, _ = select.select([fd], [], [], timeout)
+    return bool(readable)
+
+
+def session_pids(sid):
+    pids = []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            fields = (entry / "stat").read_text().rsplit(")", 1)[1].split()
+        except OSError:
+            continue
+        if int(fields[3]) == sid:
+            pids.append(int(entry.name))
+    return sorted(pids)
+
+
+def session_stacks(sid):
+    out = []
+    for pid in session_pids(sid):
+        try:
+            cmdline = (Path("/proc") / str(pid) / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+        except OSError:
+            continue
+        out.append(f"\n--- pid {pid}: {cmdline}\n")
+        # Without debuginfod: downloads make eu-stack take minutes.
+        try:
+            res = subprocess.run(["eu-stack", "-p", str(pid)], capture_output=True, text=True, timeout=30,
+                                 env=dict(os.environ, DEBUGINFOD_URLS=""))
+            out.append(res.stdout + res.stderr)
+        except subprocess.TimeoutExpired:
+            out.append("eu-stack timed out\n")
+    return "".join(out)
+
+
+def test_settings(name):
+    """-s arguments from tests/<name>.settings (one key=value per line), after the defaults."""
+    path = TESTS / f"{name}.settings"
+    if not path.exists():
+        return []
+    return [arg for line in path.read_text().split() for arg in ("-s", line)]
+
+
+def coredumps_since(start_wall, executables):
+    """Stack traces of the given executables that dumped core since start_wall."""
+    since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_wall))
+    env = dict(os.environ, DEBUGINFOD_URLS="", SYSTEMD_PAGER="")
+    listing = subprocess.run(["coredumpctl", "list", "--no-legend", "--since", since, "--json=short"],
+                             capture_output=True, text=True, env=env)
+    import json
+    # coredumpctl may append a notice after the JSON, e.g. about running dump units.
+    dumps = json.JSONDecoder().raw_decode(listing.stdout.lstrip())[0] if listing.stdout.strip() else []
+    out = []
+    for pid in [str(d["pid"]) for d in dumps
+                if d.get("exe") in executables]:
+        info = subprocess.run(["coredumpctl", "info", "--no-pager", pid], capture_output=True, text=True,
+                              timeout=60, env=env)
+        out.append(info.stdout)
+    return "".join(out)
+
+
+def kill_session(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    proc.wait()
+
+
+def diff(expected, got):
+    import difflib
+    return "".join(f"      {l}\n" for l in difflib.unified_diff(expected, got, "expected", "got", lineterm="", n=2))
+
+
+def tail(path, n, indent=""):
+    lines = path.read_text(errors="replace").splitlines()[-n:]
+    return "\n".join(indent + l for l in lines)
+
+
+if __name__ == "__main__":
+    main()

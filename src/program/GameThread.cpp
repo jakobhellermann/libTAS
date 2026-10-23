@@ -75,6 +75,12 @@ void GameThread::set_env_variables(Context *context, int gameArch)
         setenv("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/lvp_icd.i686.json:/usr/share/vulkan/icd.d/lvp_icd.x86_64.json:/usr/share/vulkan/icd.d/lvp_icd.json", 1);
         setenv("VDPAU_DRIVER", "va_gl", 1);
         setenv("VDPAU_QUIRKS", "AvoidVA", 1);
+
+        /* Present Vulkan by copying to the window: with shared memory, the X
+         * server holds swapchain images and their fences, which a loaded
+         * state cannot rewind. */
+        // TODO alternative queue one OUT_OF_DATE swapchain to invalidate xshmfence mappings
+        appendEnvList("MESA_VK_WSI_DEBUG", "noshm");
     }
 
     /* If we prefer OpenAL Soft, we'll want to force it to use either SDL2 or ALSA internally */

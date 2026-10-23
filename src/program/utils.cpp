@@ -229,3 +229,10 @@ uint64_t getSymbolAddress(const char* symbol, const char* file)
 
     return 0;
 }
+
+void appendEnvList(const char* name, const char* item)
+{
+    const char* current = getenv(name);
+    std::string value = (current && current[0]) ? std::string(current) + "," + item : std::string(item);
+    setenv(name, value.c_str(), 1);
+}

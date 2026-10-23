@@ -57,6 +57,9 @@ std::filesystem::path extractMacOSExecutable(std::filesystem::path path);
 /* Get the result of a shell command */
 std::string queryCmd(std::string_view cmd, int* status = nullptr);
 
+/* Appends an item to a comma-separated environment variable, keeping its current items. */
+void appendEnvList(const char* name, const char* item);
+
 /* Get the result of a shell command and returns pid */
 std::string queryCmdPid(const char **command, pid_t* popen_pid);
 

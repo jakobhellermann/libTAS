@@ -192,7 +192,18 @@ void SaveStateManager::init()
             std::cerr << "Unexpected error from clone3" << std::endl;
         }
         else {
-            has_clone3_set_tid = true;
+            /* Choosing the tid also needs CAP_CHECKPOINT_RESTORE over the pid
+             * namespace. Asking for our own tid fails either way, with EPERM
+             * when we may not choose it. */
+            pid_t own_tid = getpid();
+            struct clone_args probe = {};
+            probe.exit_signal = SIGCHLD;
+            probe.set_tid = reinterpret_cast<uintptr_t>(&own_tid);
+            probe.set_tid_size = 1;
+            pid = syscall(__NR_clone3, &probe, sizeof(probe));
+            if (pid == 0)
+                _exit(0);
+            has_clone3_set_tid = (pid == -1 && errno == EEXIST);
         }
 #elif defined(__i386__)
         /* For now, disable clone3 until proper asm to use it can be written */
@@ -933,7 +944,7 @@ void SaveStateManager::createNewThreads()
                 RUN_CLONE3_RESTORE_FN(returned_pid, cargs, sizeof(cargs), thread, startNewThread);
                 
                 if (returned_pid < 0) {
-                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, (errno == 0)?"None":strerror(errno));
+                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, strerror(static_cast<int>(-returned_pid)));
                 }
                 else if (returned_pid == 0) {
                     /* This is for child process, but it is supposed to have called
@@ -956,7 +967,7 @@ void SaveStateManager::createNewThreads()
                 RUN_CLONE_RESTORE_FN(returned_pid, clone_flags, reinterpret_cast<uintptr_t>(thread->saved_sp) - 128, thread->ptid, thread->ptid, thread, startNewThread);
 
                 if (returned_pid < 0) {
-                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, (errno == 0)?"None":strerror(errno));
+                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, strerror(static_cast<int>(-returned_pid)));
                 }
             }
         }

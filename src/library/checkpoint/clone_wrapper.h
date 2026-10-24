@@ -32,7 +32,7 @@
             "movq %1, %%rdi                \n"    \
             "movq %3, %%rdx                \n"    \
             "movq %4, %%r10                \n"    \
-            "movl $220, %%eax /* __NR_clone syscall */   \n"    \
+            "movl $56, %%eax /* __NR_clone syscall */   \n"    \
             "syscall                    \n"    \
                                      \
             "testq %%rax,%%rax                \n"    \

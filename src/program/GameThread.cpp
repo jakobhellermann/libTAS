@@ -365,7 +365,7 @@ void GameThread::launch(Context *context)
     }
 
     /* Append the game command-line arguments */
-    sharg << context->config.gameargs;
+    sharg << context->config.gameargs << context->engine_args;
 
     /* Run the actual game with sh, taking care of splitting arguments */
     execlp("sh", "sh", "-c", sharg.str().c_str(), nullptr);

@@ -143,6 +143,9 @@ struct Context {
     
     /* Detected game engine */
     int engine;
+
+    /* Command-line options for the detected engine, added at launch without being saved */
+    std::string engine_args;
 };
 
 #endif

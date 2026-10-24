@@ -181,8 +181,18 @@ void AutoDetect::game_libraries(Context *context)
     }
 }
 
+/* Adds an engine option unless the user's game arguments already name it. */
+static void addEngineArg(Context *context, const std::string& option, const std::string& arg)
+{
+    if (context->config.gameargs.find(option) != std::string::npos)
+        return;
+    std::cout << "   Adding " << arg << " command-line option" << std::endl;
+    context->engine_args += " " + arg;
+}
+
 int AutoDetect::game_engine(Context *context)
 {
+    context->engine_args.clear();
     context->gameexecutable = context->gamepath;
     
     /* Get file extension */
@@ -221,11 +231,7 @@ int AutoDetect::game_engine(Context *context)
         else
             std::cout << "   Could not detect version " << std::endl;
 
-        /* Check for -force-gfx-direct command-line option */
-        if (context->config.gameargs.find("-force-gfx-direct") == std::string::npos) {
-            std::cout << "   Adding -force-gfx-direct command-line option" << std::endl;
-            context->config.gameargs += " -force-gfx-direct";
-        }
+        addEngineArg(context, "-force-gfx-direct", "-force-gfx-direct");
         
         return ENGINE_UNITY;
     }
@@ -256,11 +262,7 @@ int AutoDetect::game_engine(Context *context)
     if (!godotcount.empty() && (std::strtoul(godotcount.c_str(), nullptr, 10) > 100)) {
         std::cout << "Godot game detected" << std::endl;
 
-        /* Check for --audio-driver command-line option */
-        if (context->config.gameargs.find("--audio-driver") == std::string::npos) {
-            std::cout << "   Adding --audio-driver ALSA command-line option" << std::endl;
-            context->config.gameargs += " --audio-driver ALSA";
-        }
+        addEngineArg(context, "--audio-driver", "--audio-driver ALSA");
         
         return ENGINE_GODOT;
     }

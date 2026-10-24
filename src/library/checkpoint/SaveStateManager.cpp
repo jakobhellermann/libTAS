@@ -611,6 +611,9 @@ void SaveStateManager::suspendThreads()
 {
     MYASSERT(pthread_mutex_lock(&threadResumeLock) == 0)
 
+    struct timespec start;
+    NATIVECALL(clock_gettime(CLOCK_MONOTONIC, &start));
+
     /* Terminate threads flagged as such.
      * Halt all other threads - force them to call stopthisthread
      * If any have blocked checkpointing, wait for them to unblock before
@@ -713,8 +716,10 @@ void SaveStateManager::suspendThreads()
                         LOG(LL_DEBUG, LCF_CHECKPOINT, "Wait for tid %d to become 0", *thread->ptid);                        
                         usleep(1000);
                         i++;
-                        if (i > 1000)
+                        if (i > 1000) {
+                            LOG(LL_WARN, LCF_CHECKPOINT, "Thread %d did not terminate within 1 s, continuing", *thread->ptid);
                             break;
+                        }
                     }
                 }
                 break;
@@ -740,6 +745,12 @@ void SaveStateManager::suspendThreads()
 
     sem_destroy(&semNotifyCkptThread);
     LOG(LL_DEBUG, LCF_CHECKPOINT, "%d threads were suspended", numThreads);
+
+    struct timespec end;
+    NATIVECALL(clock_gettime(CLOCK_MONOTONIC, &end));
+    double ms = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
+    if (ms > 50)
+        LOG(LL_INFO, LCF_CHECKPOINT, "Suspending %d threads took %.1f ms", numThreads, ms);
 }
 
 /* Resume all threads. */

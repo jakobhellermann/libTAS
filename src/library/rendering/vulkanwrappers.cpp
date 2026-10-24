@@ -376,9 +376,10 @@ VkResult vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* p
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_VULKAN);
 
     /* We must add support for transfering the swapchain image from/to another image,
-     * for encoding and hud. */
+     * for encoding and hud, and for drawing the hud into it. */
     VkSwapchainCreateInfoKHR newCreateInfo = *pCreateInfo;
-    newCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    newCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     /* Prefer immediate mode for savestates, but only if the surface reports it
      * as supported for this physical device. */

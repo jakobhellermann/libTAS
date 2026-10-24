@@ -42,6 +42,10 @@ public:
      */
     int init();
 
+    /* Copies must fit the swapchain images, which keep their size until the
+     * swapchain is recreated, and that reinitializes the capture anyway. */
+    void resize(int, int) override {}
+
     /* Create the screen buffer/surface/texture */
     void initScreenSurface();
 

@@ -280,7 +280,7 @@ VkResult vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInf
         vk::context.device = *pDevice;
 
         /* We are officially using Vulkan now. */
-        Global::game_info.video |= GameInfo::VULKAN;
+        Global::game_info.video = (Global::game_info.video & ~GameInfo::OPENGL) | GameInfo::VULKAN;
         Global::game_info.tosend = true;
         
         /* Get the address of all functions that we will be using */

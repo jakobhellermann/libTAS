@@ -17,6 +17,14 @@
 #ifndef EARLY_ACQUIRE
 #define EARLY_ACQUIRE 0
 #endif
+// Makes a GLX context current on the window once before rendering with Vulkan, like Unity's
+// graphics API probe.
+#ifndef GL_PROBE
+#define GL_PROBE 0
+#endif
+#if GL_PROBE
+#include <GL/glx.h>
+#endif
 
 PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr_;
 #define GLOBAL_FNS(X) X(vkCreateInstance)
@@ -167,6 +175,18 @@ int main(void) {
     Window win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, 320, 240, 0, 0, 0);
     XMapWindow(dpy, win);
     XSync(dpy, False);
+#if GL_PROBE
+    int visual_attribs[] = {GLX_RGBA, GLX_DOUBLEBUFFER, None};
+    XVisualInfo *vi = glXChooseVisual(dpy, DefaultScreen(dpy), visual_attribs);
+    GLXContext ctx = vi ? glXCreateContext(dpy, vi, NULL, True) : NULL;
+    if (!ctx || !glXMakeCurrent(dpy, win, ctx)) {
+        fprintf(stderr, "TEST: FAIL GLX probe\n");
+        return 1;
+    }
+    glXMakeCurrent(dpy, None, NULL);
+    glXDestroyContext(dpy, ctx);
+    XFree(vi);
+#endif
 
     void *libvulkan = dlopen("libvulkan.so.1", RTLD_NOW);
     if (!libvulkan) {

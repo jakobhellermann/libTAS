@@ -9,6 +9,7 @@ debian/libtas.debhelper.log
 debian/libtas.substvars
 debian/autoreconf.after
 debian/autoreconf.before
+result
 
 autom4te.cache
 aclocal.m4
@@ -48,3 +49,4 @@ Sessionx.vim
 tags
 # Persistent undo
 [._]*.un~
+

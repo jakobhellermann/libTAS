@@ -80,10 +80,17 @@ void checkMesa()
     LOG(LL_INFO, LCF_OGL, "OpenGL vendor: %s", vendor);
     LOG(LL_INFO, LCF_OGL, "OpenGL renderer: %s", renderer);
 
-    /* Check that we are using llvm driver */
-    if (Global::shared_config.opengl_soft && (strstr(renderer, "llvmpipe") == nullptr)) {
-        /* Alert the user that software rendering is not enabled */
-        std::string alertMsg = "Software rendering was enabled, but the OpenGL renderer currently used (";
+    /* Check that the renderer matches the rendering mode */
+    const char* mode = nullptr;
+    const char* expected = nullptr;
+    switch (Global::shared_config.rendering) {
+    case SharedConfig::RENDERING_SOFTWARE:
+        mode = "Software";
+        expected = "llvmpipe";
+        break;
+    }
+    if (expected && (strstr(renderer, expected) == nullptr)) {
+        std::string alertMsg = std::string(mode) + " rendering was selected, but the OpenGL renderer currently used (";
         alertMsg += renderer;
         alertMsg += ") does not match. Check if you have a Mesa-compatible GPU driver installed. At the moment, it is likely that savestates will crash";
         sendAlertMsg(alertMsg);
@@ -360,7 +367,7 @@ int glXSwapIntervalSGI (int interval)
      * We can noop this call when using software renderer, which fix the issue
      * and will probably not alter much the behaviour of games. 
      */
-    if (Global::shared_config.opengl_soft) {
+    if (Global::shared_config.rendering == SharedConfig::RENDERING_SOFTWARE) {
         return 0;
     }
 

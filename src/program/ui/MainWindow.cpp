@@ -311,7 +311,7 @@ MainWindow::MainWindow(Context* c) : QMainWindow(), context(c)
 
     statusIcon = new QLabel();
     statusIcon->setPixmap(pixmap);
-    statusSoft = new QLabel(tr("Savestates will likely not work unless you check [Video > Force software rendering]"));
+    statusSoft = new QLabel(tr("Savestates will likely not work with native rendering [Video > Rendering]"));
     statusMute = new QLabel(tr("Savestates will likely not work unless you check [Sound > Mute]"));
 
     /* Layouts */
@@ -1140,7 +1140,7 @@ void MainWindow::updateStatusBar()
     statusBar()->removeWidget(statusSoft);
     statusBar()->removeWidget(statusMute);
 
-    if (!context->config.sc.opengl_soft) {
+    if (context->config.sc.rendering == SharedConfig::RENDERING_NATIVE) {
         statusBar()->addWidget(statusIcon);
         statusIcon->show();
         statusBar()->addWidget(statusSoft);

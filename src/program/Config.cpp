@@ -70,7 +70,7 @@ bool Config::applyCliSetting(const std::string& key, const std::string& value)
     else if (key == "openal_soft")              sc.openal_soft = boolValue;
     else if (key == "locale")                   sc.locale = intValue;
     else if (key == "virtual_steam")            sc.virtual_steam = boolValue;
-    else if (key == "opengl_soft")              sc.opengl_soft = boolValue;
+    else if (key == "rendering")                sc.rendering = intValue;
     else if (key == "opengl_quality")           sc.opengl_quality = intValue;
     else if (key == "async_events")             sc.async_events = intValue;
     else if (key == "wait_timeout")             sc.wait_timeout = intValue;
@@ -250,7 +250,7 @@ void Config::save(const std::filesystem::path& gamepath) {
     settings.setValue("locale", sc.locale);
     settings.setValue("virtual_steam", sc.virtual_steam);
     settings.setValue("openal_soft", sc.openal_soft);
-    settings.setValue("opengl_soft", sc.opengl_soft);
+    settings.setValue("rendering", sc.rendering);
     settings.setValue("opengl_quality", sc.opengl_quality);
     settings.setValue("async_events", sc.async_events);
     settings.setValue("wait_timeout", sc.wait_timeout);
@@ -484,7 +484,10 @@ void Config::load(const std::filesystem::path& gamepath) {
     sc.audio_codec = settings.value("audio_codec", sc.audio_codec).toInt();
     sc.audio_bitrate = settings.value("audio_bitrate", sc.audio_bitrate).toInt();
     sc.savestate_settings = settings.value("savestate_settings", sc.savestate_settings).toInt();
-    sc.opengl_soft = settings.value("opengl_soft", sc.opengl_soft).toBool();
+    if (settings.contains("rendering"))
+        sc.rendering = settings.value("rendering").toInt();
+    else if (settings.contains("opengl_soft"))
+        sc.rendering = settings.value("opengl_soft").toBool() ? SharedConfig::RENDERING_SOFTWARE : SharedConfig::RENDERING_NATIVE;
     sc.opengl_quality = settings.value("opengl_quality", sc.opengl_quality).toInt();
 
     size = settings.beginReadArray("main_gettimes_threshold");

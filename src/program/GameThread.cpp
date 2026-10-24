@@ -69,7 +69,10 @@ void GameThread::set_env_variables(Context *context, int gameArch)
     setenv("vblank_mode", "0", 1);
 
     /* Set additional environment variables regarding Mesa and VDPAU configurations */
-    if (context->config.sc.opengl_soft) {
+    switch (context->config.sc.rendering) {
+    case SharedConfig::RENDERING_NATIVE:
+        break;
+    case SharedConfig::RENDERING_SOFTWARE:
         setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
         setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
         setenv("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/lvp_icd.i686.json:/usr/share/vulkan/icd.d/lvp_icd.x86_64.json:/usr/share/vulkan/icd.d/lvp_icd.json", 1);
@@ -81,6 +84,7 @@ void GameThread::set_env_variables(Context *context, int gameArch)
          * state cannot rewind. */
         // TODO alternative queue one OUT_OF_DATE swapchain to invalidate xshmfence mappings
         appendEnvList("MESA_VK_WSI_DEBUG", "noshm");
+        break;
     }
 
     /* If we prefer OpenAL Soft, we'll want to force it to use either SDL2 or ALSA internally */

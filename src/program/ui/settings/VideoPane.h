@@ -27,7 +27,6 @@ class QComboBox;
 class QCheckBox;
 class QRadioButton;
 class QSpinBox;
-class ToolTipCheckBox;
 class ToolTipComboBox;
 class QGroupBox;
 
@@ -60,7 +59,7 @@ private:
     QCheckBox* osdMenuBox;
     QCheckBox* osdEncodeBox;
 
-    ToolTipCheckBox* rendSoftBox;
+    ToolTipComboBox* rendModeChoice;
     ToolTipComboBox* rendQualityChoice;
 
 public slots:

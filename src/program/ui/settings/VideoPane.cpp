@@ -18,7 +18,6 @@
  */
 
 #include "VideoPane.h"
-#include "tooltip/ToolTipCheckBox.h"
 #include "tooltip/ToolTipComboBox.h"
 
 #include "Context.h"
@@ -95,14 +94,16 @@ void VideoPane::initLayout()
     QVBoxLayout* renderingLayout = new QVBoxLayout;
     renderingBox->setLayout(renderingLayout);
 
-    rendSoftBox = new ToolTipCheckBox(tr("Force software rendering"));
+    rendModeChoice = new ToolTipComboBox();
+    rendModeChoice->addItem(tr("Native (unsafe savestates)"), SharedConfig::RENDERING_NATIVE);
+    rendModeChoice->addItem(tr("Software"), SharedConfig::RENDERING_SOFTWARE);
 
     rendQualityChoice = new ToolTipComboBox();
     rendQualityChoice->addItem(tr("Normal"), SharedConfig::OPENGL_QUALITY_NORMAL);
     rendQualityChoice->addItem(tr("Fast"), SharedConfig::OPENGL_QUALITY_FAST);
     rendQualityChoice->addItem(tr("Fastest"), SharedConfig::OPENGL_QUALITY_FASTEST);
 
-    renderingLayout->addWidget(rendSoftBox);
+    renderingLayout->addWidget(rendModeChoice);
     renderingLayout->addWidget(rendQualityChoice);
 
     QVBoxLayout* const mainLayout = new QVBoxLayout;
@@ -139,17 +140,19 @@ void VideoPane::initSignals()
     connect(osdMenuBox, &QAbstractButton::clicked, this, &VideoPane::saveConfig);
     connect(osdEncodeBox, &QAbstractButton::clicked, this, &VideoPane::saveConfig);
 
-    connect(rendSoftBox, &QAbstractButton::clicked, this, &VideoPane::saveConfig);
+    connect(rendModeChoice, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, &VideoPane::saveConfig);
     connect(rendQualityChoice, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, &VideoPane::saveConfig);
 }
 
 void VideoPane::initToolTips()
 {
-    rendSoftBox->setDescription("Enforce the use of Mesa's OpenGL/Vulkan software "
-    "driver, which is necessary for savestates to work correctly. You will need "
-    "to already be using a Mesa for rendering, and you should get a warning popup "
-    "window and game startup if it is not the case."
-    "<br><br><em>If unsure, leave this checked</em>");
+    rendModeChoice->setTitle("Rendering");
+    rendModeChoice->setDescription("How the game renders. Native uses the system's "
+    "driver inside the game, which savestates cannot restore. Software uses Mesa's "
+    "OpenGL/Vulkan software drivers, which needs Mesa to already be used for rendering. "
+    "You should get a warning popup at game startup if the "
+    "renderer does not match."
+    "<br><br><em>If unsure, select Software</em>");
 
     rendQualityChoice->setTitle("OpenGL rendering quality");
     rendQualityChoice->setDescription("Select how aggressively libTAS should optimize OpenGL rendering for software driver. "
@@ -192,7 +195,7 @@ void VideoPane::loadConfig()
     osdMenuBox->setChecked(context->config.sc.osd);
     osdEncodeBox->setChecked(context->config.sc.osd_encode);
 
-    rendSoftBox->setChecked(context->config.sc.opengl_soft);
+    rendModeChoice->setCurrentIndex(rendModeChoice->findData(context->config.sc.rendering));
     rendQualityChoice->setCurrentIndex(rendQualityChoice->findData(context->config.sc.opengl_quality));
 }
 
@@ -215,7 +218,7 @@ void VideoPane::saveConfig()
     context->config.sc.osd = osdMenuBox->isChecked();
     context->config.sc.osd_encode = osdEncodeBox->isChecked();
 
-    context->config.sc.opengl_soft = rendSoftBox->isChecked();
+    context->config.sc.rendering = rendModeChoice->currentData().toInt();
     context->config.sc.opengl_quality = rendQualityChoice->itemData(rendQualityChoice->currentIndex()).toInt();
 
     context->config.sc_modified = true;

@@ -267,7 +267,7 @@ void myglGetIntegerv(GLenum pname, GLint *data)
 {
     if (GlobalState::isNative()) return glProcs.GetIntegerv(pname, data);
     LOGTRACE_SIMPLE(LCF_OGL);
-    if (Global::shared_config.opengl_soft)
+    if (Global::shared_config.rendering == SharedConfig::RENDERING_SOFTWARE)
     {
         // Unity 4.x uses GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX to determine if there is enough memory for a texture
         // However, llvmpipe is bugged and will return an uninitialized variable, i.e. non-deterministic

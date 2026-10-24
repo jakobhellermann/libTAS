@@ -709,15 +709,15 @@ void SaveStateManager::suspendThreads()
                     }
 
                     /* We must wait until the thread terminates entirely, because
-                     * it may release resources during state loading.
-                     * A terminating thread sets the tid in pthread struct to 0 */
+                     * it may release resources during state loading. The raw exit
+                     * in stopThisThread() leaves the tid in the pthread struct, so
+                     * ask the kernel whether the thread is still there. */
                     int i = 0;
-                    while (*thread->ptid != 0) {
-                        LOG(LL_DEBUG, LCF_CHECKPOINT, "Wait for tid %d to become 0", *thread->ptid);                        
+                    while (syscall(SYS_tgkill, getpid(), thread->real_tid, 0) == 0) {
                         usleep(1000);
                         i++;
                         if (i > 1000) {
-                            LOG(LL_WARN, LCF_CHECKPOINT, "Thread %d did not terminate within 1 s, continuing", *thread->ptid);
+                            LOG(LL_WARN, LCF_CHECKPOINT, "Thread %d did not terminate within 1 s, continuing", thread->real_tid);
                             break;
                         }
                     }

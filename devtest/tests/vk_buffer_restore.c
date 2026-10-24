@@ -5,6 +5,7 @@
 #define VK_USE_PLATFORM_XLIB_KHR
 #define VK_NO_PROTOTYPES
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <dlfcn.h>
 #include <vulkan/vulkan.h>
 #include <stdint.h>
@@ -26,6 +27,18 @@
 // still in use on the server when the state is loaded.
 #ifndef X_RESOURCES
 #define X_RESOURCES 0
+#endif
+// Recreates the swapchain at this frame, so the X11 WSI swaps its Present event queue.
+#ifndef RECREATE_SWAPCHAIN_AT
+#define RECREATE_SWAPCHAIN_AT 0
+#endif
+// Grows the window at this frame and keeps presenting until the swapchain is out of date.
+#ifndef RESIZE_AT
+#define RESIZE_AT 0
+#endif
+// Checks after each present that the window shows the frame's clear color.
+#ifndef VERIFY_PRESENT
+#define VERIFY_PRESENT 0
 #endif
 #if GL_PROBE
 #include <GL/glx.h>
@@ -82,6 +95,7 @@ static VkCommandBuffer cmdbuf;
 static VkFence fence;
 static VkSurfaceKHR surface;
 static VkSwapchainKHR swapchain;
+static VkExtent2D swapchain_extent;
 static VkImage images[MAX_IMAGES];
 static uint32_t image_count;
 static VkSemaphore acquired;
@@ -140,6 +154,7 @@ static void create_swapchain(void) {
         .oldSwapchain = old,
     };
     CHECK(vkCreateSwapchainKHR(device, &sci, NULL, &swapchain));
+    swapchain_extent = caps.currentExtent;
     if (old) vkDestroySwapchainKHR(device, old, NULL);
     image_count = MAX_IMAGES;
     CHECK(vkGetSwapchainImagesKHR(device, swapchain, &image_count, images));
@@ -317,6 +332,8 @@ int main(void) {
         if (frame == END_FRAME) break;
 
         upload[0] = frame;
+        if (frame == RESIZE_AT) XResizeWindow(dpy, win, 400, 300);
+        if (frame == RECREATE_SWAPCHAIN_AT) create_swapchain();
 #if X_RESOURCES
         Pixmap pixmap = XCreatePixmap(dpy, win, 1, 1, DefaultDepth(dpy, DefaultScreen(dpy)));
         XSync(dpy, False);
@@ -364,6 +381,27 @@ int main(void) {
         } else if (presented != VK_SUBOPTIMAL_KHR) {
             CHECK(presented);
         }
+#if VERIFY_PRESENT
+        if (presented != VK_ERROR_OUT_OF_DATE_KHR) {
+            // Mesa's WSI writes the image from its own queue thread after vkQueuePresentKHR
+            // returns, so wait a bounded number of roundtrips (time is frozen under libTAS).
+            int want = (int)((frame % 8) / 8.0f * 255.0f + 0.5f), red = -1;
+            unsigned long shown = 0;
+            for (int tries = 0; tries < 10000 && (red < want - 2 || red > want + 2); tries++) {
+                // The center, away from libTAS' HUD and messages.
+                XImage *pixel = XGetImage(dpy, win, swapchain_extent.width / 2,
+                                          swapchain_extent.height / 2, 1, 1, AllPlanes, ZPixmap);
+                shown = XGetPixel(pixel, 0, 0);
+                XDestroyImage(pixel);
+                red = (int)((shown >> 16) & 0xff);
+            }
+            if (red < want - 2 || red > want + 2) {
+                fprintf(stderr, "TEST: FAIL frame %u: window shows 0x%06lx, expected red %d\n", frame,
+                        shown, want);
+                return 1;
+            }
+        }
+#endif
 #if EARLY_ACQUIRE
         acquire_next(&index);
 #endif

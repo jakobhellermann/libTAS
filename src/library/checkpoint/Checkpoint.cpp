@@ -517,9 +517,16 @@ static int reallocateArea(Area *saved_area, Area *current_area)
     if ((saved_area->isStandard()) && (current_area->addr != nullptr) &&
         (saved_area->addr == current_area->addr)) {
 
-        /* If it is not the same area, unmap the current area */
+        /* If it is not the same area, unmap the current area. A file mapping
+         * is only the same at the same offset of the same file: memfds share
+         * names, and the game may have remapped other parts of one since. */
+        bool other_file = !(saved_area->flags & Area::AREA_ANON) &&
+            ((saved_area->offset != current_area->offset) ||
+             (saved_area->devmajor != current_area->devmajor) ||
+             (saved_area->devminor != current_area->devminor) ||
+             (saved_area->inodenum != current_area->inodenum));
         if ((strcmp(saved_area->name, current_area->name) != 0) ||
-            (saved_area->flags != current_area->flags)) {
+            (saved_area->flags != current_area->flags) || other_file) {
 
             LOG(LL_DEBUG, LCF_CHECKPOINT, "Region %p (%s) with size %zd must be deallocated", current_area->addr, current_area->name, current_area->size);
             MYASSERT(munmap(current_area->addr, current_area->size) == 0)
@@ -595,6 +602,7 @@ static int reallocateArea(Area *saved_area, Area *current_area)
              */
             saved_area->addr = current_area->endAddr;
             saved_area->size -= copy_size;
+            saved_area->offset += copy_size;
             return 1;
         }
 
@@ -602,6 +610,7 @@ static int reallocateArea(Area *saved_area, Area *current_area)
             /* There is extra memory that we have to deal with */
             current_area->addr = saved_area->endAddr;
             current_area->size -= copy_size;
+            current_area->offset += copy_size;
             return -1;
         }
     }

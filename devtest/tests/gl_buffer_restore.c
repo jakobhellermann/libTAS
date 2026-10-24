@@ -15,6 +15,24 @@
 
 #define END_FRAME 30
 
+// Reallocates a block of the game thread's malloc arena from another thread all the time, so
+// savestates may freeze it while it holds that arena's lock.
+#ifndef MALLOC_WORKER
+#define MALLOC_WORKER 0
+#endif
+#if MALLOC_WORKER
+#include <pthread.h>
+
+static void *churn_malloc(void *block) {
+    // realloc() locks the arena the block came from and keeps the block there.
+    for (;;) {
+        block = realloc(block, 8192);
+        block = realloc(block, 2048);
+    }
+    return NULL;
+}
+#endif
+
 static void check_gl(const char *what) {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
@@ -73,6 +91,14 @@ int main(void) {
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
     check_gl("setup");
+
+#if MALLOC_WORKER
+    pthread_t worker;
+    if (pthread_create(&worker, NULL, churn_malloc, malloc(2048)) != 0) {
+        fprintf(stderr, "TEST: FAIL pthread_create\n");
+        return 1;
+    }
+#endif
 
     for (uint32_t frame = 1;; frame++) {
         uint32_t expected = frame - 1;

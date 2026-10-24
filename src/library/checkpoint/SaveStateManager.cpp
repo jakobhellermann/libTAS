@@ -24,6 +24,7 @@
 #include "ThreadSync.h"
 #include "Checkpoint.h"
 #include "xcb/xcbrequests.h"
+#include "general/mallocwrappers.h"
 #include "AltStack.h"
 #include "ReservedMemory.h"
 #include "ThreadInfo.h"
@@ -774,6 +775,9 @@ void SaveStateManager::stopThisThread(int signum)
     GlobalNative gn;
 
     ThreadInfo *current_thread = ThreadManager::getCurrentThread();
+
+    if (deferSuspendInAllocator())
+        return;
 
     if (current_thread->state == ThreadInfo::ST_TERMINATED) {
         /* Thread termination requested during restore: do a raw per-thread

@@ -335,9 +335,22 @@ void Checkpoint::handler(int signum, siginfo_t *info, void *ucontext)
                 x11::gameDisplays[i]->request = static_cast<unsigned long>(request[i]);
 #endif
 
-                /* Restore the entire xcb connection struct */
+                /* Keep the loaded connection, whose lists, locks and socket
+                 * ownership match the loaded memory and thread stacks, but take
+                 * what the server has seen advance since: sequence numbers,
+                 * buffered bytes and fds, and resource ids. */
                 xcb_connection_t *cur_xcb_conn = XGetXCBConnection(x11::gameDisplays[i]);
-                memcpy(cur_xcb_conn, &xcb_conn[i], sizeof(xcb_connection_t));
+                const xcb_connection_t &live = xcb_conn[i];
+                memcpy(&cur_xcb_conn->in.queue, &live.in.queue,
+                       offsetof(_xcb_in, current_reply) - offsetof(_xcb_in, queue));
+                cur_xcb_conn->in.in_fd = live.in.in_fd;
+                memcpy(&cur_xcb_conn->out.queue, &live.out.queue,
+                       offsetof(_xcb_out, reqlenlock) - offsetof(_xcb_out, queue));
+                cur_xcb_conn->out.maximum_request_length_tag = live.out.maximum_request_length_tag;
+                cur_xcb_conn->out.value = live.out.value;
+                cur_xcb_conn->out.out_fd = live.out.out_fd;
+                cur_xcb_conn->xid = live.xid;
+                cur_xcb_conn->has_error = live.has_error;
 
                 /* Xlib caches the next resource id from the savestate, which may
                  * have been used on the server since; take a fresh one from xcb. */

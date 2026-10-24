@@ -338,6 +338,10 @@ void Checkpoint::handler(int signum, siginfo_t *info, void *ucontext)
                 /* Restore the entire xcb connection struct */
                 xcb_connection_t *cur_xcb_conn = XGetXCBConnection(x11::gameDisplays[i]);
                 memcpy(cur_xcb_conn, &xcb_conn[i], sizeof(xcb_connection_t));
+
+                /* Xlib caches the next resource id from the savestate, which may
+                 * have been used on the server since; take a fresh one from xcb. */
+                (void) XAllocID(x11::gameDisplays[i]);
             }
         }
 #endif

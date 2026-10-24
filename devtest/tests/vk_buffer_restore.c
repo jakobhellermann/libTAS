@@ -22,6 +22,11 @@
 #ifndef GL_PROBE
 #define GL_PROBE 0
 #endif
+// Creates an X pixmap every frame and keeps it, so X resource ids allocated after a save are
+// still in use on the server when the state is loaded.
+#ifndef X_RESOURCES
+#define X_RESOURCES 0
+#endif
 #if GL_PROBE
 #include <GL/glx.h>
 #endif
@@ -312,6 +317,11 @@ int main(void) {
         if (frame == END_FRAME) break;
 
         upload[0] = frame;
+#if X_RESOURCES
+        Pixmap pixmap = XCreatePixmap(dpy, win, 1, 1, DefaultDepth(dpy, DefaultScreen(dpy)));
+        XSync(dpy, False);
+        fprintf(stderr, "INFO: frame %u pixmap 0x%lx\n", frame, pixmap);
+#endif
 
 #if !EARLY_ACQUIRE
         acquire_next(&index);

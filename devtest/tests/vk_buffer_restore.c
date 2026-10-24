@@ -13,6 +13,10 @@
 #include <string.h>
 
 #define END_FRAME 30
+// Acquires the next image right after presenting, before the next frame starts.
+#ifndef EARLY_ACQUIRE
+#define EARLY_ACQUIRE 0
+#endif
 
 PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr_;
 #define GLOBAL_FNS(X) X(vkCreateInstance)
@@ -144,6 +148,16 @@ static void barrier(VkImage image, VkImageLayout from, VkImageLayout to) {
                          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &b);
 }
 
+static void acquire_next(uint32_t *index) {
+    VkResult acquire;
+    while ((acquire = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, acquired,
+                                            VK_NULL_HANDLE, index)) == VK_ERROR_OUT_OF_DATE_KHR) {
+        fprintf(stderr, "TEST: swapchain out of date\n");
+        create_swapchain();
+    }
+    if (acquire != VK_SUCCESS && acquire != VK_SUBOPTIMAL_KHR) CHECK(acquire);
+}
+
 int main(void) {
     Display *dpy = XOpenDisplay(NULL);
     if (!dpy) {
@@ -245,6 +259,10 @@ int main(void) {
     upload[0] = 0;
     upload[1] = 0xC0FFEE;
 
+    uint32_t index;
+#if EARLY_ACQUIRE
+    acquire_next(&index);
+#endif
     for (uint32_t frame = 1;; frame++) {
         // The previous frame's upload went through the GPU into device_buf; read it back.
         CHECK(vkResetCommandBuffer(cmdbuf, 0));
@@ -275,15 +293,9 @@ int main(void) {
 
         upload[0] = frame;
 
-        uint32_t index;
-        VkResult acquire;
-        while ((acquire = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, acquired,
-                                                VK_NULL_HANDLE, &index)) ==
-               VK_ERROR_OUT_OF_DATE_KHR) {
-            fprintf(stderr, "TEST: swapchain out of date\n");
-            create_swapchain();
-        }
-        if (acquire != VK_SUCCESS && acquire != VK_SUBOPTIMAL_KHR) CHECK(acquire);
+#if !EARLY_ACQUIRE
+        acquire_next(&index);
+#endif
 
         CHECK(vkResetCommandBuffer(cmdbuf, 0));
         CHECK(vkBeginCommandBuffer(cmdbuf, &bi));
@@ -322,6 +334,9 @@ int main(void) {
         } else if (presented != VK_SUBOPTIMAL_KHR) {
             CHECK(presented);
         }
+#if EARLY_ACQUIRE
+        acquire_next(&index);
+#endif
     }
 
     vkDeviceWaitIdle(device);

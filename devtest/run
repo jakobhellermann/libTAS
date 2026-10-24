@@ -7,8 +7,10 @@ exits; a FAIL line kills the session at once, a hang is killed after --timeout w
 stacks of every process in the session written to the log.
 
 Modes:
-  soft  lavapipe through libTAS' default software rendering
+  soft  lavapipe through libTAS' software rendering mode
   zink  like soft, with GL through zink on lavapipe
+  gpu   gfxstream through kumquat; needs LIBTAS_GPU_KUMQUAT_BIN and LIBTAS_GPU_ICD
+        (from the environment or devtest/local.env)
 """
 
 import argparse
@@ -30,6 +32,7 @@ OUT = DEVTEST / "out"
 TESTS = DEVTEST / "tests"
 # Short, so that socket paths below it stay within the Unix socket limit.
 HOMES = Path.home() / ".cache/libtas-devtest"
+GPU_VARS = ("LIBTAS_GPU_KUMQUAT_BIN", "LIBTAS_GPU_ICD")
 # Known libTAS validation errors that do not fail a test, but are reported with its result.
 KNOWN_VUIDS = {
     # libTAS enables swapchain_maintenance1 without surface_maintenance1 and its feature.
@@ -44,7 +47,7 @@ KNOWN_VUIDS = {
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("filter", nargs="?", default="", help="substring of test names")
-    parser.add_argument("--mode", choices=("soft", "zink"), default="soft")
+    parser.add_argument("--mode", choices=("soft", "zink", "gpu"), default="soft")
     parser.add_argument("--savestate-settings", type=int, default=0,
                         help="libTAS savestate_settings flags (16: skip unmapped pages)")
     parser.add_argument("--display", choices=("xvfb", "weston"), default="xvfb",
@@ -64,10 +67,13 @@ def main():
     if not args.no_build:
         build_libtas()
     tests = sorted(p.stem for p in TESTS.glob("*.c") if args.filter in p.stem)
+    # A GPU host tmpfs only exists in gpu mode, the other modes have nothing to fail.
+    if args.mode != "gpu":
+        tests = [t for t in tests if not (TESTS / f"{t}.gpu_tmpfs").exists()]
     if not tests:
         sys.exit(f"no test matches {args.filter!r}")
 
-    env = session_env()
+    env = session_env(args.mode)
     failed = []
     for name in tests:
         ok = run_test(name, args, env)
@@ -102,10 +108,26 @@ def compile_test(name):
     return exe
 
 
-def session_env():
+def session_env(mode):
     env = dict(os.environ)
     env.pop("WAYLAND_DISPLAY", None)
+    if mode == "gpu":
+        load_local_env(env)
+        missing = [v for v in GPU_VARS if not env.get(v)]
+        if missing:
+            sys.exit(f"gpu mode needs {', '.join(missing)} (environment or {DEVTEST / 'local.env'})")
     return env
+
+
+def load_local_env(env):
+    path = DEVTEST / "local.env"
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            env.setdefault(key.strip(), value.strip())
 
 
 def run_test(name, args, base_env):
@@ -116,8 +138,8 @@ def run_test(name, args, base_env):
     home = Path(tempfile.mkdtemp(prefix=f"{name}-", dir=HOMES))
     env = dict(base_env)
     # Tests fail when a driver silently falls back to another device.
-    env["TEST_EXPECT_VK"] = "llvmpipe"
-    env["TEST_EXPECT_GL"] = {"soft": "llvmpipe", "zink": "zink"}[args.mode]
+    env["TEST_EXPECT_VK"] = "GFXStream" if args.mode == "gpu" else "llvmpipe"
+    env["TEST_EXPECT_GL"] = {"soft": "llvmpipe", "zink": "zink", "gpu": "zink"}[args.mode]
     if args.mesa_prefix and not (args.mesa_prefix / "lib/libGLX_mesa.so.0").exists():
         sys.exit(f"no lib/libGLX_mesa.so.0 in {args.mesa_prefix}")
     if args.mode == "zink":
@@ -129,6 +151,10 @@ def run_test(name, args, base_env):
     # Pre-answers the download question, a modal dialog even with -n.
     (home / "config/libTAS").mkdir(parents=True)
     (home / "config/libTAS/libTAS.ini").write_text("[General]\nallow_downloads=0\n")
+    general = ""
+    if args.mode == "gpu":
+        general = (f"kumquat_path={env['LIBTAS_GPU_KUMQUAT_BIN']}\n"
+                   f"gfxstream_icd={env['LIBTAS_GPU_ICD']}\n")
     # Only the game gets the validation layer: libTAS sets these overrides last for it.
     # VVL's internal waits end at steady_clock::now() + 120 s, which under libTAS' frozen
     # game time (starting at 1 s) is already in the real past, so they time out at once
@@ -142,9 +168,16 @@ def run_test(name, args, base_env):
     if args.api_dump:
         overrides += [("VK_APIDUMP_FILE", "true"), ("VK_APIDUMP_LOG_FILENAME", str(home / "apidump.txt"))]
     (home / "config/libTAS" / f"{exe.name}.ini").write_text(
-        "[env_overrides]\n"
+        f"[General]\n{general}[env_overrides]\n"
         + "".join(f"{i}\\name={k}\n{i}\\value={v}\n" for i, (k, v) in enumerate(overrides, 1))
         + f"size={len(overrides)}\n")
+    if args.mode == "gpu":
+        # libTAS puts kumquat's runtime directory (socket, log) under TMPDIR.
+        env["TMPDIR"] = str(home)
+        if args.display == "xvfb":
+            # Xvfb has no DRI3: zink presents through DRI2, Vulkan copies to the window.
+            env["LIBGL_KOPPER_DRI2"] = "1"
+            env["MESA_VK_WSI_DEBUG"] = "sw"
 
     libtas = [
         str(BUILD / "src/program/libTAS"),
@@ -152,6 +185,8 @@ def run_test(name, args, base_env):
         "--libtas-so-path", str(BUILD / "src/library/libtas.so"),
         "-w", str(home / "movie.ltm"),
         "-l", str(TESTS / f"{name}.lua"),
+        # 1: software, 2: GPU host (SharedConfig::RenderingMode)
+        "-s", f"rendering={2 if args.mode == 'gpu' else 1}",
         "-s", "logging_status=1",
         "-s", "logging_level=3",
         "-s", f"savestate_settings={args.savestate_settings}",
@@ -163,7 +198,16 @@ def run_test(name, args, base_env):
         str(exe),
     ]
     exit_file = home / "libtas-exit-code"
-    cmd = private_tmp(display_command(args.display, libtas, home, exit_file))
+    # A tiny tmpfs for kumquat's directory makes its snapshots fail, like a full /tmp.
+    gpu_tmpfs = TESTS / f"{name}.gpu_tmpfs"
+    gpu_dir = home / "libtas-gpu" if args.mode == "gpu" and gpu_tmpfs.exists() else None
+    if gpu_dir:
+        gpu_dir.mkdir()
+    elif args.mode == "gpu":
+        # A snapshot left by a session that died: libTAS has to remove it.
+        (home / "libtas-gpu" / "state1").mkdir(parents=True)
+    cmd = private_tmp(display_command(args.display, libtas, home, exit_file),
+                      (gpu_dir, gpu_tmpfs.read_text().strip()) if gpu_dir else None)
 
     print(f"--- {name} ({args.mode}, {args.display})", flush=True)
     start_wall = time.time()
@@ -172,7 +216,7 @@ def run_test(name, args, base_env):
                             start_new_session=True)
     lines, verdict, known = [], "runner interrupted", []
     try:
-        lines, verdict, known = collect(proc, log, args)
+        lines, verdict, known = collect(proc, log, args, expected_errors(name))
     finally:
         if args.keep and verdict and verdict.startswith(("no output", "timeout")):
             print(f"    kept hung session {proc.pid}: pids {session_pids(proc.pid)}; kill with: kill -9 -{proc.pid}")
@@ -186,11 +230,20 @@ def run_test(name, args, base_env):
     if (home / "apidump.txt").exists():
         shutil.copy(home / "apidump.txt", log.with_suffix(".apidump.txt"))
 
-    crashes = coredumps_since(start_wall, {str(exe), str(BUILD / "src/program/libTAS")})
+    leftover_snapshots = sorted(str(p.relative_to(home)) for p in home.glob("libtas-gpu/state*"))
+
+    for kumquat_log in sorted(home.glob("libtas-gpu/kumquat.log")):
+        with log.open("a") as f:
+            f.write(f"\n=== {kumquat_log} ===\n" + kumquat_log.read_text(errors="replace"))
+
+    # kumquat may be started through a wrapper script, so match it by name.
+    crashes = coredumps_since(start_wall, {str(exe), str(BUILD / "src/program/libTAS")}, {"kumquat"})
     if crashes:
         with log.open("a") as f:
             f.write("\n=== CORE DUMPS ===\n" + crashes)
         verdict = (verdict + "; " if verdict else "") + "core dump (stack in log)"
+    if leftover_snapshots and not verdict:
+        verdict = "GPU host snapshots left behind: " + ", ".join(leftover_snapshots)
 
     got = [l for l in lines if l.startswith("TEST: ")]
     expected_path = TESTS / f"{name}.expected"
@@ -227,12 +280,16 @@ def run_test(name, args, base_env):
     return False
 
 
-def private_tmp(cmd):
+def private_tmp(cmd, extra_tmpfs=None):
     """Runs cmd with its own /tmp, as libTAS uses the fixed socket /tmp/libTAS.socket.
+    extra_tmpfs is an optional (directory, size) to mount a tmpfs of that size on.
 
     Mounting needs root in a user namespace; the command then runs as our own uid again.
     """
-    script = f'mount -t tmpfs tmpfs /tmp && mkdir -m 1777 /tmp/.X11-unix && uid=$1 gid=$2 && shift 2 && exec unshare --user --map-user="$uid" --map-group="$gid" "$@"'
+    extra = ""
+    if extra_tmpfs:
+        extra = f"mount -t tmpfs -o size={shlex.quote(extra_tmpfs[1])},mode=0777 tmpfs {shlex.quote(str(extra_tmpfs[0]))} && "
+    script = f'mount -t tmpfs tmpfs /tmp && mkdir -m 1777 /tmp/.X11-unix && {extra}uid=$1 gid=$2 && shift 2 && exec unshare --user --map-user="$uid" --map-group="$gid" "$@"'
     return ["unshare", "-rm", "sh", "-c", script, "sh", str(os.getuid()), str(os.getgid()), *cmd]
 
 
@@ -250,7 +307,7 @@ def display_command(display, libtas, home, exit_file):
             f"--socket=wayland-libtas-{home.name}"]
 
 
-def collect(proc, log, args):
+def collect(proc, log, args, allowed_errors):
     """Streams the session output into the log until exit, a FAIL line or the timeout."""
     lines = []
     verdict = None
@@ -289,7 +346,7 @@ def collect(proc, log, args):
                 if "did not terminate within" in line and not verdict:
                     verdict = line.strip()
                 # libTAS logs errors it continues after, as "ERROR (file:line)".
-                if "] ERROR (" in line and not verdict:
+                if "] ERROR (" in line and not verdict and not any(e in line for e in allowed_errors):
                     verdict = line.strip()
                 if line.startswith("Validation Error"):
                     vuid = line.split("[ ", 1)[-1].split(" ]", 1)[0]
@@ -348,6 +405,12 @@ def session_stacks(sid):
     return "".join(out)
 
 
+def expected_errors(name):
+    """Substrings of libTAS error logs that tests/<name>.expected_errors allows, one per line."""
+    path = TESTS / f"{name}.expected_errors"
+    return [l for l in path.read_text().splitlines() if l.strip()] if path.exists() else []
+
+
 def test_settings(name):
     """-s arguments from tests/<name>.settings (one key=value per line), after the defaults."""
     path = TESTS / f"{name}.settings"
@@ -356,8 +419,9 @@ def test_settings(name):
     return [arg for line in path.read_text().split() for arg in ("-s", line)]
 
 
-def coredumps_since(start_wall, executables):
-    """Stack traces of the given executables that dumped core since start_wall."""
+def coredumps_since(start_wall, executables, names):
+    """Stack traces of the given executables, or programs with the given names, that dumped
+    core since start_wall."""
     since = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_wall))
     env = dict(os.environ, DEBUGINFOD_URLS="", SYSTEMD_PAGER="")
     listing = subprocess.run(["coredumpctl", "list", "--no-legend", "--since", since, "--json=short"],
@@ -367,7 +431,7 @@ def coredumps_since(start_wall, executables):
     dumps = json.JSONDecoder().raw_decode(listing.stdout.lstrip())[0] if listing.stdout.strip() else []
     out = []
     for pid in [str(d["pid"]) for d in dumps
-                if d.get("exe") in executables]:
+                if d.get("exe") in executables or Path(d.get("exe", "")).name in names]:
         info = subprocess.run(["coredumpctl", "info", "--no-pager", pid], capture_output=True, text=True,
                               timeout=60, env=env)
         out.append(info.stdout)

@@ -262,8 +262,8 @@ bool GameEvents::processEvent(GameEvents::EventType type, const HotKey &hk)
 
             /* Handle errors and return values */
             if (message == SaveState::ENOLOAD) {
-                if (!context->config.sc.opengl_soft) {
-                    emit alertToShow(QString("Crash after loading the savestate. Savestates are unstable unless you check Video>Force software rendering"));
+                if (context->config.sc.rendering == SharedConfig::RENDERING_NATIVE) {
+                    emit alertToShow(QString("Crash after loading the savestate. Savestates are unstable with native rendering, see Video>Rendering"));
                 }
 
                 return false;

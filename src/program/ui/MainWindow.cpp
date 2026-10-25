@@ -49,6 +49,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QVBoxLayout>
@@ -310,7 +311,7 @@ MainWindow::MainWindow(Context* c) : QMainWindow(), context(c)
 
     statusIcon = new QLabel();
     statusIcon->setPixmap(pixmap);
-    statusSoft = new QLabel(tr("Savestates will likely not work unless you check [Video > Force software rendering]"));
+    statusSoft = new QLabel(tr("Savestates will likely not work with native rendering [Video > Rendering]"));
     statusMute = new QLabel(tr("Savestates will likely not work unless you check [Sound > Mute]"));
 
     /* Layouts */
@@ -822,6 +823,9 @@ void MainWindow::updateStatus(int status)
             stopButton->setEnabled(false);
 
             updateMovieParams();
+
+            if (!context->interactive)
+                qApp->quit();
             break;
 
         case Context::STARTING:
@@ -1136,7 +1140,7 @@ void MainWindow::updateStatusBar()
     statusBar()->removeWidget(statusSoft);
     statusBar()->removeWidget(statusMute);
 
-    if (!context->config.sc.opengl_soft) {
+    if (context->config.sc.rendering == SharedConfig::RENDERING_NATIVE) {
         statusBar()->addWidget(statusIcon);
         statusIcon->show();
         statusBar()->addWidget(statusSoft);

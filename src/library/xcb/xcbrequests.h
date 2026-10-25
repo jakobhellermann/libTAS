@@ -27,6 +27,16 @@
 
 namespace libtas {
 
+/* Holds back other threads' xcb requests while the calling thread saves or
+ * loads a state, so that none is frozen while xcb hands the socket back from
+ * Xlib, which waits on the display lock. */
+namespace XcbRequestGate {
+    /* Waits until no other thread is inside an xcb request. */
+    void close();
+    void open();
+}
+
+
 OVERRIDE unsigned int xcb_send_request(xcb_connection_t *c, int flags, struct iovec *vector, const xcb_protocol_request_t *req);
 OVERRIDE unsigned int xcb_send_request_with_fds(xcb_connection_t *c, int flags, struct iovec *vector, const xcb_protocol_request_t *req, unsigned int num_fds, int *fds);
 OVERRIDE uint64_t xcb_send_request64(xcb_connection_t *c, int flags, struct iovec *vector, const xcb_protocol_request_t *req);

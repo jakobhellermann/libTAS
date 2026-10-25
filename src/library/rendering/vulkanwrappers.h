@@ -66,6 +66,7 @@ struct Vulkan_Context
     VkRenderPass        renderPass;
     VkClearValue        clearValue;
     uint32_t            frameIndex;             // Current frame being rendered to (0 <= FrameIndex < FrameInFlightCount)
+    bool                imageHeld;              // frameIndex is acquired from the swapchain and not presented yet
     uint32_t            imageCount;             // Number of simultaneous in-flight frames (returned by vkGetSwapchainImagesKHR, usually derived from min_image_count)
     uint32_t            semaphoreIndex;         // Current set of swapchain wait semaphores we're using (needs to be distinct from per frame data)
     VkSemaphore         currentSemaphore;

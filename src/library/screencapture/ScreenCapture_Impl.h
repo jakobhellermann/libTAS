@@ -91,7 +91,7 @@ public:
      * @param[in] w New width in pixels
      * @param[in] h New height in pixels
      */
-    void resize(int w, int h);
+    virtual void resize(int w, int h);
 
     /**
      * @brief Retrieves current capture dimensions.

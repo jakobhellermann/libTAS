@@ -26,8 +26,20 @@
 
 namespace libtas {
 
-/* Allocate SIZE bytes of memory.  */
 OVERRIDE void *malloc (size_t size) __THROW;
+OVERRIDE void *calloc (size_t nmemb, size_t size) __THROW;
+OVERRIDE void *realloc (void *ptr, size_t size) __THROW;
+OVERRIDE void *reallocarray (void *ptr, size_t nmemb, size_t size) __THROW;
+OVERRIDE void free (void *ptr) __THROW;
+OVERRIDE void *memalign (size_t alignment, size_t size) __THROW;
+OVERRIDE int posix_memalign (void **memptr, size_t alignment, size_t size) __THROW;
+OVERRIDE void *aligned_alloc (size_t alignment, size_t size) __THROW;
+OVERRIDE void *valloc (size_t size) __THROW;
+OVERRIDE void *pvalloc (size_t size) __THROW;
+
+/* Called by the suspend signal handler: returns true, and suspends the thread
+ * once it leaves the allocator, if the signal interrupted an allocator call. */
+bool deferSuspendInAllocator();
 
 }
 

@@ -84,6 +84,7 @@ libTAS_SOURCES = \
     GameEventsXcb.cpp \
     GameLoop.cpp \
     GameThread.cpp \
+    GpuHost.cpp \
     KeyMapping.cpp \
     KeyMappingXcb.cpp \
     main.cpp \

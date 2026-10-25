@@ -36,13 +36,16 @@ namespace ReservedMemory {
         STACK_SIZE = 5 * ONE_MB,
         SS_SLOTS_SIZE = 16*sizeof(bool),
         SH_SIZE = sizeof(StateHeader),
+        GPU_TIMER_SIZE = sizeof(int64_t),
     };
     enum Addresses {
         COMPRESSED_ADDR = 0,
         STACK_ADDR = COMPRESSED_ADDR + COMPRESSED_SIZE,
         SS_SLOTS_ADDR = STACK_ADDR + STACK_SIZE,
         SH_ADDR = SS_SLOTS_ADDR + SS_SLOTS_SIZE,
-        RESTORE_TOTAL_SIZE = SH_ADDR + SH_SIZE,
+        /* When the GPU host was asked to snapshot or restore; outlives the restore */
+        GPU_TIMER_ADDR = SH_ADDR + SH_SIZE,
+        RESTORE_TOTAL_SIZE = GPU_TIMER_ADDR + GPU_TIMER_SIZE,
     };
 
     void init();

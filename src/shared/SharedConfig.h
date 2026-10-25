@@ -320,8 +320,13 @@ struct __attribute__((packed, aligned(8))) SharedConfig {
     /* Simulates a virtual Steam client */
     bool virtual_steam = false;
 
-    /* Force Mesa software OpenGL driver */
-    bool opengl_soft = true;
+    /* How the game renders */
+    enum RenderingMode {
+        RENDERING_NATIVE, // The system's driver in the game process; savestates are unreliable
+        RENDERING_SOFTWARE, // Mesa's software drivers
+        RENDERING_GPU_HOST, // The real GPU through kumquat, which savestates snapshot
+    };
+    int rendering = RENDERING_SOFTWARE;
 
     /* OpenGL quality level for software rendering optimization */
     enum OpenGLQuality {

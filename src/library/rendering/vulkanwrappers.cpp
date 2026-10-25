@@ -27,6 +27,7 @@
 #include "frame.h"
 #include "global.h"
 #include "GlobalState.h"
+#include "UnityHacks.h"
 
 #include <string.h>
 #include <dlfcn.h>
@@ -280,7 +281,7 @@ VkResult vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInf
         vk::context.device = *pDevice;
 
         /* We are officially using Vulkan now. */
-        Global::game_info.video |= GameInfo::VULKAN;
+        Global::game_info.video = (Global::game_info.video & ~GameInfo::OPENGL) | GameInfo::VULKAN;
         Global::game_info.tosend = true;
         
         /* Get the address of all functions that we will be using */
@@ -359,6 +360,7 @@ static void destroySwapchain()
     vk::context.renderPass = VK_NULL_HANDLE;
     vk::context.imageCount = 0;
     vk::context.frameIndex = 0;
+    vk::context.imageHeld = false;
     vk::context.currentSemaphore = VK_NULL_HANDLE;
     if (vk::context.presentFence != VK_NULL_HANDLE) {
         vkProcs.DestroyFence(vk::context.device, vk::context.presentFence, vk::context.allocator);
@@ -376,9 +378,10 @@ VkResult vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* p
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_VULKAN);
 
     /* We must add support for transfering the swapchain image from/to another image,
-     * for encoding and hud. */
+     * for encoding and hud, and for drawing the hud into it. */
     VkSwapchainCreateInfoKHR newCreateInfo = *pCreateInfo;
-    newCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    newCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     /* Prefer immediate mode for savestates, but only if the surface reports it
      * as supported for this physical device. */
@@ -446,6 +449,7 @@ VkResult vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* p
     vk::context.swapchain = *pSwapchain;
     vk::context.swapchainRebuild = false;
     vk::context.frameIndex = 0;
+    vk::context.imageHeld = false;
     vk::context.currentSemaphore = VK_NULL_HANDLE;
     vk::context.presentFence = VK_NULL_HANDLE;
 
@@ -624,12 +628,10 @@ VkResult vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64
 
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_VULKAN);
 
-    if (Global::skipping_draw) {
-        /* We don't acquire an image, so that we don't need to call vkQueuePresentKHR()
-         * later. However, this function also signal either a semaphore or a
-         * fence, so we still need to signal either one. There does not seem to
-         * be specific functions for that, so I'm using an empty command submitted
-         * to a queue. */
+    /* Skipped frames are not presented, so the image acquired for one of them
+     * is handed out again until a drawn frame presents it. */
+    if (vk::context.imageHeld) {
+        /* Still signal the semaphore or fence, with an empty submit. */
         VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         VkSubmitInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -644,7 +646,7 @@ VkResult vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64
             info.signalSemaphoreCount = 0;
         }
         if (vk::context.graphicsQueue == VK_NULL_HANDLE) {
-            LOG(LL_ERROR, LCF_WINDOW | LCF_VULKAN, "Cannot signal skipped draw without a graphics queue");
+            LOG(LL_ERROR, LCF_WINDOW | LCF_VULKAN, "Cannot signal a held image without a graphics queue");
             return VK_ERROR_INITIALIZATION_FAILED;
         }
 
@@ -653,12 +655,11 @@ VkResult vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64
             VKCHECKERROR(submitRes);
             return submitRes;
         }
-        
-        /* Fill a meaningful value to the returned image index */
+
         if (pImageIndex) {
-            *pImageIndex = 0;
+            *pImageIndex = vk::context.frameIndex;
         }
-        
+
         return VK_SUCCESS;
     }
 
@@ -676,6 +677,7 @@ VkResult vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64
 
     LOG(LL_DEBUG, LCF_WINDOW | LCF_VULKAN, "    return image index %d", *pImageIndex);
     vk::context.frameIndex = *pImageIndex;
+    vk::context.imageHeld = true;
     return res;
 }
 
@@ -685,6 +687,19 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
         return vkProcs.QueuePresentKHR(queue, pPresentInfo);
 
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_VULKAN);
+
+    // HACK: make first vulkan frames (present 10ms dt, present 10ms dt) match opengl (present present 20ms, skip)
+    static int present_count = 0;
+    const bool unity_first_frames = UnityHacks::isUnity();
+    if (unity_first_frames) {
+        ++present_count;
+        if (present_count == 1) {
+            std::function<void()> dummy_draw;
+            static RenderHUD dummy;
+            frameBoundary(dummy_draw, dummy);
+        }
+    }
+    bool skip_present = unity_first_frames && present_count == 2;
 
     /* Store the graphic queue */
     vk::context.graphicsQueue = queue;
@@ -706,7 +721,7 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
         vk::context.currentSemaphore = VK_NULL_HANDLE;
     }
 
-    if (Global::skipping_draw) {        
+    if (Global::skipping_draw || skip_present) {
         /* If skipping draw, we must still wait on all semaphores, so we push an
         * empty command */
         VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -722,6 +737,9 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
             VKCHECKERROR(submitRes);
             return submitRes;
         }
+        /* The image stays held and is handed out again by the next acquire */
+        if (skip_present)
+            return VK_SUCCESS;
     }
 
     /* Start the frame boundary and pass the function to draw */
@@ -759,6 +777,7 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 
         LOG(LL_DEBUG, LCF_WINDOW | LCF_VULKAN, "    vkQueuePresentKHR wait on semaphore %llx", vk::context.currentSemaphore);
         NATIVECALL(ret = vkProcs.QueuePresentKHR(queue, &pi));
+        vk::context.imageHeld = false;
         
         if (ret == VK_ERROR_OUT_OF_DATE_KHR || ret == VK_SUBOPTIMAL_KHR) {
             vk::context.swapchainRebuild = true;

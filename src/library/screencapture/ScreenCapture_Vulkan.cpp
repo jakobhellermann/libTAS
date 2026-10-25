@@ -499,7 +499,9 @@ int ScreenCapture_Vulkan::copySurfaceToScreen()
     /* Transition destination image to transfer destination layout */
     VkImageMemoryBarrier dstBarrier{};
     dstBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    dstBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    /* A newly acquired image may never have been presented, so its layout is
+     * unknown; it is overwritten completely anyway. */
+    dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     dstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -619,7 +621,9 @@ void ScreenCapture_Vulkan::clearScreen()
     /* Transition destination image to transfer destination layout */
     VkImageMemoryBarrier dstBarrier{};
     dstBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    dstBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    /* A newly acquired image may never have been presented, so its layout is
+     * unknown; it is overwritten completely anyway. */
+    dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     dstBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;

@@ -22,6 +22,7 @@
 #endif
 #include "GameLoop.h"
 #include "GameThread.h"
+#include "GpuHost.h"
 #include "GameEvents.h"
 #include "AutoDetect.h"
 #include "UnityPatching.h"
@@ -61,6 +62,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 
 GameLoop::GameLoop(Context* c) : movie(MovieFile(c)), context(c)
 {
@@ -73,7 +75,8 @@ GameLoop::GameLoop(Context* c) : movie(MovieFile(c)), context(c)
 
 void GameLoop::start()
 {
-    init();
+    if (!init())
+        return;
     initProcessMessages();
 
     Lua::Callbacks::call(Lua::NamedLuaFunction::CallbackStartup);
@@ -176,7 +179,7 @@ void GameLoop::start()
     }
 }
 
-void GameLoop::init()
+bool GameLoop::init()
 {
     /* Unvalidate the game pid */
     context->game_pid = 0;
@@ -205,6 +208,7 @@ void GameLoop::init()
 
     /* Remove savestates again in case we did not exist cleanly the previous time */
     remove_savestates(context);
+    game_crashed = false;
 
     /* Remove the file socket */
     int err = removeSocket();
@@ -220,7 +224,7 @@ void GameLoop::init()
     /* Compute the MD5 hash of the game binary */
     context->md5_game.clear();
     std::ostringstream cmd;
-    cmd << "md5sum -b \"" << context->gamepath << "\" 2> /dev/null";
+    cmd << "md5sum -b " << context->gamepath << " 2> /dev/null";
 
     context->md5_game = queryCmd(cmd.str());
     if (context->md5_game.size() > 32)
@@ -260,6 +264,18 @@ void GameLoop::init()
 
     /* We fork here so that the child process calls the game. This is done after,
      * loading the movie so that it benefits from the movie settings. */
+    if (GpuHost::enabled(context)) {
+        std::string error = GpuHost::start(context);
+        if (!error.empty()) {
+            std::cerr << error << std::endl;
+            emit alertToShow(QString::fromStdString(error));
+            movie.close();
+            context->status = Context::INACTIVE;
+            emit statusChanged(Context::INACTIVE);
+            return false;
+        }
+    }
+
     fork_pid = fork();
     if (fork_pid == 0) {
         GameThread::launch(context);
@@ -295,6 +311,7 @@ void GameLoop::init()
     context->config.sc.write_savefiles_on_exit =
         (context->config.sc.recording != SharedConfig::NO_RECORDING) &&
         (context->config.auto_restart);
+    return true;
 }
 
 void GameLoop::initProcessMessages()
@@ -564,16 +581,14 @@ bool GameLoop::startFrameMessages()
             break;
         }
         case MSGB_QUIT:
-            if (!context->interactive) {
-                /* Exit the program when game has exit */
-                exit(0);
-            }
             return true;
         case -1:
             std::cerr << "The connection to the game was lost. Exiting" << std::endl;
+            reportGameEnd();
             return true;
         case -2:
             std::cerr << "The connection to the game was closed. Exiting" << std::endl;
+            reportGameEnd();
             return true;
         default:
             std::cerr << "Got unknown message!!!" << std::endl;
@@ -606,6 +621,54 @@ bool GameLoop::startFrameMessages()
     sendMessage(MSGN_START_FRAMEBOUNDARY);
 
     return false;
+}
+
+void GameLoop::removeOrKeepSavestates()
+{
+    if (game_crashed)
+        writeCrashReport();
+    else
+        remove_savestates(context);
+}
+
+void GameLoop::writeCrashReport()
+{
+    std::filesystem::path dir = keep_savestates(context);
+
+    std::filesystem::path ini = context->config.iniPath(context->gamepath).toStdString();
+    std::filesystem::path kumquat_log = context->kumquat_dir / "kumquat.log";
+    for (const std::filesystem::path& file : {ini, context->config.moviefile, kumquat_log}) {
+        if (!file.empty() && std::filesystem::exists(file))
+            std::filesystem::copy_file(file, dir / file.filename());
+    }
+
+    std::ofstream report(dir / "report.txt");
+#ifdef LIBTAS_INTERIM_COMMIT
+    report << "libTAS interim commit " << LIBTAS_INTERIM_COMMIT << std::endl;
+#endif
+    report << "game " << context->gamepath.string() << std::endl;
+    report << "config " << ini.string() << std::endl;
+    report << "movie " << context->config.moviefile.string() << std::endl;
+    report << game_end << std::endl;
+    if (!gpu_end.empty())
+        report << gpu_end << std::endl;
+    for (const std::string& action : SaveStateList::history())
+        report << action << std::endl;
+
+    std::cerr << "Crash report in " << dir.string() << ": zip it and send it with the game's core dump "
+              << "(coredumpctl dump " << fork_pid << " -o game.core)" << std::endl;
+}
+
+void GameLoop::reportGameEnd()
+{
+    /* The socket closes when the game dies, its exit status follows shortly */
+    game_end = "Game " + describeChildExit(fork_pid, 1000, &game_crashed);
+    std::cerr << game_end << std::endl;
+    if (context->config.sc.logging_status == SharedConfig::LOGGING_TO_FILE)
+        std::cerr << "Game log: " << context->gamepath.string() << ".log" << std::endl;
+    gpu_end = GpuHost::describe(context);
+    if (!gpu_end.empty())
+        std::cerr << gpu_end << std::endl;
 }
 
 void GameLoop::sleepSendPreview()
@@ -886,6 +949,8 @@ void GameLoop::loopExit()
         context->appimage_pid = 0;
     }
 
+    GpuHost::stop(context);
+
     /* We need to restart the game if we got a restart input, or if:
      * - auto-restart is set
      * - we are playing or recording a movie
@@ -902,7 +967,7 @@ void GameLoop::loopExit()
         closeSocket();
 
         /* Remove savestates because they are invalid on future instances of the game */
-        remove_savestates(context);
+        removeOrKeepSavestates();
 
         /* Backup savestate movies on disk */
         SaveStateList::backupMovies();
@@ -940,7 +1005,7 @@ void GameLoop::loopExit()
     closeSocket();
 
     /* Remove savestates because they are invalid on future instances of the game */
-    remove_savestates(context);
+    removeOrKeepSavestates();
 
     /* Backup savestate movies on disk */
     SaveStateList::backupMovies();

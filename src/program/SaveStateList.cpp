@@ -32,6 +32,7 @@ static SaveState states[NB_STATES];
 
 /* Id of last loaded or saved savestate */
 static int last_state_id;
+static std::vector<std::string> actions;
 
 /* Old id of root savestate */
 static uint64_t old_root_framecount;
@@ -44,6 +45,18 @@ void SaveStateList::init(Context* context)
     
     last_state_id = -1;
     old_root_framecount = 0;
+    actions.clear();
+}
+
+const std::vector<std::string>& SaveStateList::history()
+{
+    return actions;
+}
+
+static void logAction(const std::string& action, bool failed)
+{
+    actions.push_back(action + (failed ? " failed" : ""));
+    (failed ? std::cerr : std::cout) << actions.back() << std::endl;
 }
 
 SaveState& SaveStateList::get(int id)
@@ -92,6 +105,8 @@ int SaveStateList::save(int id, Context* context, const MovieFile& movie)
 {
     SaveState& ss = get(id);
     int message = ss.save(context, movie);
+    bool saved = message == MSGB_SAVING_SUCCEEDED;
+    logAction(std::string(saved ? "Saved" : "Saving") + " state " + std::to_string(id) + " at frame " + std::to_string(context->framecount), !saved);
     
     if (message == MSGB_SAVING_SUCCEEDED) {
         /* Update root savestate */
@@ -130,7 +145,11 @@ int SaveStateList::load(int id, Context* context, const MovieFile& movie, bool b
 int SaveStateList::postLoad(int id, Context* context, MovieFile& movie, bool branch, bool inputEditor)
 {
     SaveState& ss = get(id);
+    uint64_t from_frame = context->framecount;
     int message = ss.postLoad(context, movie, branch, inputEditor);
+    bool loaded = message == MSGB_LOADING_SUCCEEDED;
+    logAction(std::string(loaded ? "Loaded" : "Loading") + " state " + std::to_string(id) + " (saved at frame " +
+        std::to_string(ss.framecount) + ") at frame " + std::to_string(from_frame), !loaded);
     
     if (message == MSGB_LOADING_SUCCEEDED) {
         /* Update root savestate */

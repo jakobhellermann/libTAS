@@ -1,0 +1,148 @@
+{
+  "nodes": {
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1791914995,
+        "narHash": "sha256-Zf/xfQEAasnwnmEfHqW/4hjDE/s44yn2hD4RuVIZRjA=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "b7a79d3fea1e214f6d668d521cecec0c01e26544",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "gfxstream": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793652396,
+        "narHash": "sha256-UMfSHOK35tzQtv6ZMApWmyV8GMSGUVivJo5sT4SEKXY=",
+        "owner": "jakobhellermann",
+        "repo": "gfxstream",
+        "rev": "7fda1d677a7803952c38ae00830d03f9b54c49ee",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jakobhellermann",
+        "ref": "dev",
+        "repo": "gfxstream",
+        "type": "github"
+      }
+    },
+    "kumquat": {
+      "inputs": {
+        "gfxstream": [
+          "gfxstream"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793649396,
+        "narHash": "sha256-J6C5sUKx6oYhY9aG9WSMQopg/djZcic8OjC2vuP99js=",
+        "owner": "jakobhellermann",
+        "repo": "rutabaga_gfx",
+        "rev": "c3a54c4a1be870964e93759f4f92e654293b6f3c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jakobhellermann",
+        "ref": "dev",
+        "repo": "rutabaga_gfx",
+        "type": "github"
+      }
+    },
+    "mesaGpu": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793649188,
+        "narHash": "sha256-bZHJLkOROihfouSyHESV/Hc1s/IXl1vx3giXt84nazs=",
+        "ref": "dev",
+        "rev": "730290fa7080c6305dd0a4f7edd6da3a8de7be1f",
+        "shallow": true,
+        "type": "git",
+        "url": "https://gitlab.freedesktop.org/jakobhellermann/mesa"
+      },
+      "original": {
+        "ref": "dev",
+        "shallow": true,
+        "type": "git",
+        "url": "https://gitlab.freedesktop.org/jakobhellermann/mesa"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1791487292,
+        "narHash": "sha256-tqM7xDEsaeK1p6VvRygeZ9LkQRpUUkbRT02BHv6hnTM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "8edc0c72e3a38faf5434e40d1f19431125fe4b30",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgsLibtas": {
+      "locked": {
+        "lastModified": 1735563628,
+        "narHash": "sha256-OnSAY7XDSx7CtDoqNh8jwVwh4xNL/2HaJxGjryLWzX8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b134951a4c9f3c995fd7be05f3243f8ecd65d798",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-24.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "gfxstream": "gfxstream",
+        "kumquat": "kumquat",
+        "mesaGpu": "mesaGpu",
+        "nixpkgs": "nixpkgs",
+        "nixpkgsLibtas": "nixpkgsLibtas"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

@@ -180,6 +180,13 @@ void GpuHost::setGameEnv(Context* context)
     unsetenv("VK_LOADER_DRIVERS_SELECT");
 }
 
+std::string GpuHost::describe(Context* context)
+{
+    if (!context->kumquat_pid)
+        return "";
+    return withLog(context, "kumquat " + describeChildExit(context->kumquat_pid, 0));
+}
+
 void GpuHost::stop(Context* context)
 {
     if (!context->kumquat_pid)

@@ -47,6 +47,9 @@ void setGameEnv(Context* context);
 
 void stop(Context* context);
 
+/* How kumquat is doing and where its log is, empty without a running kumquat */
+std::string describe(Context* context);
+
 }
 
 #endif

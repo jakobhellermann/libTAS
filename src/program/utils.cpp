@@ -22,6 +22,10 @@
 #include "Context.h"
 
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <csignal>
+#include <chrono>
+#include <thread>
 #include <cerrno> // errno
 #include <cstring> // strerror
 #include <iostream>
@@ -237,4 +241,31 @@ void appendEnvList(const char* name, const char* item)
     const char* current = getenv(name);
     std::string value = (current && current[0]) ? std::string(current) + "," + item : std::string(item);
     setenv(name, value.c_str(), 1);
+}
+
+std::string describeChildExit(pid_t pid, int timeout_ms)
+{
+    std::string name = "pid " + std::to_string(pid);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+    siginfo_t info = {};
+    while (true) {
+        info.si_pid = 0;
+        if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) != 0)
+            return name + ": cannot get its exit status: " + strerror(errno);
+        if (info.si_pid == pid)
+            break;
+        if (std::chrono::steady_clock::now() >= deadline)
+            return name + " is still running";
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    switch (info.si_code) {
+        case CLD_EXITED:
+            return name + " exited with code " + std::to_string(info.si_status);
+        case CLD_DUMPED:
+            return name + " crashed with signal " + std::to_string(info.si_status) + " (" + strsignal(info.si_status) +
+                "), core dumped (coredumpctl debug " + std::to_string(pid) + ")";
+        default:
+            return name + " was killed by signal " + std::to_string(info.si_status) + " (" + strsignal(info.si_status) + ")";
+    }
 }

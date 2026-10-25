@@ -66,4 +66,7 @@ std::string queryCmdPid(const char **command, pid_t* popen_pid);
 /* Get the address of a symbol from a executable or library file */
 uint64_t getSymbolAddress(const char* symbol, const char* file);
 
+/* How a child process ended, waiting up to timeout_ms for it; the child is left unreaped */
+std::string describeChildExit(pid_t pid, int timeout_ms);
+
 #endif

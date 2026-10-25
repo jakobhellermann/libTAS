@@ -65,6 +65,9 @@ private:
 
     void sleepSendPreview();
 
+    /* Prints how the game and the GPU host ended */
+    void reportGameEnd();
+
     void processInputs(AllInputs &ai);
 
     void endFrameMessages(AllInputs &ai);

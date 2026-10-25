@@ -582,9 +582,11 @@ bool GameLoop::startFrameMessages()
             return true;
         case -1:
             std::cerr << "The connection to the game was lost. Exiting" << std::endl;
+            reportGameEnd();
             return true;
         case -2:
             std::cerr << "The connection to the game was closed. Exiting" << std::endl;
+            reportGameEnd();
             return true;
         default:
             std::cerr << "Got unknown message!!!" << std::endl;
@@ -617,6 +619,17 @@ bool GameLoop::startFrameMessages()
     sendMessage(MSGN_START_FRAMEBOUNDARY);
 
     return false;
+}
+
+void GameLoop::reportGameEnd()
+{
+    /* The socket closes when the game dies, its exit status follows shortly */
+    std::cerr << "Game " << describeChildExit(fork_pid, 1000) << std::endl;
+    if (context->config.sc.logging_status == SharedConfig::LOGGING_TO_FILE)
+        std::cerr << "Game log: " << context->gamepath.string() << ".log" << std::endl;
+    std::string gpu = GpuHost::describe(context);
+    if (!gpu.empty())
+        std::cerr << gpu << std::endl;
 }
 
 void GameLoop::sleepSendPreview()

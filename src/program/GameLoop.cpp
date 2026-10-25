@@ -220,7 +220,7 @@ void GameLoop::init()
     /* Compute the MD5 hash of the game binary */
     context->md5_game.clear();
     std::ostringstream cmd;
-    cmd << "md5sum -b \"" << context->gamepath << "\" 2> /dev/null";
+    cmd << "md5sum -b " << context->gamepath << " 2> /dev/null";
 
     context->md5_game = queryCmd(cmd.str());
     if (context->md5_game.size() > 32)

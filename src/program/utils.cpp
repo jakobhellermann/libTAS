@@ -25,6 +25,7 @@
 #include <sys/wait.h>
 #include <csignal>
 #include <chrono>
+#include <ctime>
 #include <thread>
 #include <cerrno> // errno
 #include <cstring> // strerror
@@ -46,6 +47,40 @@ void remove_savestates(Context* context)
         std::filesystem::remove(savestatepspath);
     }
     GpuHost::removeSnapshots();
+}
+
+/* rename() when on the same filesystem, else copy then remove */
+static void move_path(const std::filesystem::path& from, const std::filesystem::path& to)
+{
+    std::error_code ec;
+    std::filesystem::rename(from, to, ec);
+    if (!ec)
+        return;
+    if (ec != std::errc::cross_device_link)
+        throw std::filesystem::filesystem_error("moving", from, to, ec);
+    std::filesystem::copy(from, to, std::filesystem::copy_options::recursive);
+    std::filesystem::remove_all(from);
+}
+
+std::filesystem::path keep_savestates(Context* context)
+{
+    char stamp[32];
+    time_t now = time(nullptr);
+    strftime(stamp, sizeof(stamp), "crash-%Y%m%d-%H%M%S", localtime(&now));
+
+    std::filesystem::path dir = std::filesystem::temp_directory_path() / "libtas-crash" / stamp;
+    std::filesystem::create_directories(dir);
+    std::filesystem::path savestateprefix = context->config.savestatedir / context->gamename;
+    for (int i=0; i<=10; i++) {
+        for (const char* ext : {".pm", ".p"}) {
+            std::filesystem::path state = savestateprefix;
+            state += ".state" + std::to_string(i) + ext;
+            if (std::filesystem::exists(state))
+                move_path(state, dir / state.filename());
+        }
+    }
+    GpuHost::removeSnapshots();
+    return dir;
 }
 
 int extractBinaryType(std::filesystem::path path)
@@ -243,7 +278,7 @@ void appendEnvList(const char* name, const char* item)
     setenv(name, value.c_str(), 1);
 }
 
-std::string describeChildExit(pid_t pid, int timeout_ms)
+std::string describeChildExit(pid_t pid, int timeout_ms, bool* signaled)
 {
     std::string name = "pid " + std::to_string(pid);
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
@@ -259,6 +294,8 @@ std::string describeChildExit(pid_t pid, int timeout_ms)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
+    if (signaled)
+        *signaled = info.si_code != CLD_EXITED;
     switch (info.si_code) {
         case CLD_EXITED:
             return name + " exited with code " + std::to_string(info.si_status);

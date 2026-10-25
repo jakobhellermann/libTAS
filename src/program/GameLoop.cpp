@@ -62,6 +62,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 
 GameLoop::GameLoop(Context* c) : movie(MovieFile(c)), context(c)
 {
@@ -207,6 +208,7 @@ bool GameLoop::init()
 
     /* Remove savestates again in case we did not exist cleanly the previous time */
     remove_savestates(context);
+    game_crashed = false;
 
     /* Remove the file socket */
     int err = removeSocket();
@@ -621,15 +623,52 @@ bool GameLoop::startFrameMessages()
     return false;
 }
 
+void GameLoop::removeOrKeepSavestates()
+{
+    if (game_crashed)
+        writeCrashReport();
+    else
+        remove_savestates(context);
+}
+
+void GameLoop::writeCrashReport()
+{
+    std::filesystem::path dir = keep_savestates(context);
+
+    std::filesystem::path ini = context->config.iniPath(context->gamepath).toStdString();
+    std::filesystem::path kumquat_log = context->kumquat_dir / "kumquat.log";
+    for (const std::filesystem::path& file : {ini, context->config.moviefile, kumquat_log}) {
+        if (!file.empty() && std::filesystem::exists(file))
+            std::filesystem::copy_file(file, dir / file.filename());
+    }
+
+    std::ofstream report(dir / "report.txt");
+#ifdef LIBTAS_INTERIM_COMMIT
+    report << "libTAS interim commit " << LIBTAS_INTERIM_COMMIT << std::endl;
+#endif
+    report << "game " << context->gamepath.string() << std::endl;
+    report << "config " << ini.string() << std::endl;
+    report << "movie " << context->config.moviefile.string() << std::endl;
+    report << game_end << std::endl;
+    if (!gpu_end.empty())
+        report << gpu_end << std::endl;
+    for (const std::string& action : SaveStateList::history())
+        report << action << std::endl;
+
+    std::cerr << "Crash report in " << dir.string() << ": zip it and send it with the game's core dump "
+              << "(coredumpctl dump " << fork_pid << " -o game.core)" << std::endl;
+}
+
 void GameLoop::reportGameEnd()
 {
     /* The socket closes when the game dies, its exit status follows shortly */
-    std::cerr << "Game " << describeChildExit(fork_pid, 1000) << std::endl;
+    game_end = "Game " + describeChildExit(fork_pid, 1000, &game_crashed);
+    std::cerr << game_end << std::endl;
     if (context->config.sc.logging_status == SharedConfig::LOGGING_TO_FILE)
         std::cerr << "Game log: " << context->gamepath.string() << ".log" << std::endl;
-    std::string gpu = GpuHost::describe(context);
-    if (!gpu.empty())
-        std::cerr << gpu << std::endl;
+    gpu_end = GpuHost::describe(context);
+    if (!gpu_end.empty())
+        std::cerr << gpu_end << std::endl;
 }
 
 void GameLoop::sleepSendPreview()
@@ -928,7 +967,7 @@ void GameLoop::loopExit()
         closeSocket();
 
         /* Remove savestates because they are invalid on future instances of the game */
-        remove_savestates(context);
+        removeOrKeepSavestates();
 
         /* Backup savestate movies on disk */
         SaveStateList::backupMovies();
@@ -966,7 +1005,7 @@ void GameLoop::loopExit()
     closeSocket();
 
     /* Remove savestates because they are invalid on future instances of the game */
-    remove_savestates(context);
+    removeOrKeepSavestates();
 
     /* Backup savestate movies on disk */
     SaveStateList::backupMovies();

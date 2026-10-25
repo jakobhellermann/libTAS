@@ -202,8 +202,9 @@ public:
      * (-1 for unset) */
     int allow_downloads = -1;
 
-private:
     QString iniPath(const std::filesystem::path& gamepath) const;
+
+private:
 
     /* Set default paths and optionally create directories */
     void createDirectories();

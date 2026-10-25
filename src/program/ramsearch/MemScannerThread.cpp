@@ -95,7 +95,7 @@ void MemScannerThread::first_region_scan()
         for (uintptr_t ca = cur_beg_addr; ca < cur_end_addr; ca += page_size) {
             int readValues = MemAccess::read(chunk, reinterpret_cast<void*>(ca), page_size);
             if (readValues < 0) {
-                std::cerr << "Cound not read game process at address " << std::hex << ca << std::endl;
+                std::cerr << "Cound not read game process at address " << std::hex << ca << std::dec << std::endl;
                 ms.print();
             }
             vfs.write((char*)chunk, page_size);
@@ -282,7 +282,7 @@ void MemScannerThread::next_scan_from_region()
                 continue;
             }
             if ((uint64_t)readValues < chunk_size_with_extra) {
-                std::cerr << "Could only read " << readValues << " bytes from address range " << std::hex << cur_beg_addr << " - " << std::hex << (cur_beg_addr+chunk_size_with_extra) << std::endl;
+                std::cerr << "Could only read " << readValues << " bytes from address range " << std::hex << cur_beg_addr << " - " << std::hex << (cur_beg_addr+chunk_size_with_extra) << std::dec << std::endl;
                 ms.print();
             }
             

@@ -29,6 +29,7 @@
 #elif defined(__APPLE__) && defined(__MACH__)
 #endif
 #include <string>
+#include <vector>
 #include <stdint.h>
 #include <filesystem>
 
@@ -128,6 +129,9 @@ struct Context {
 
     /* Content of LD_PRELOAD when libTAS is executed */
     std::string old_ld_preload;
+
+    /* Libraries preloaded into the game after libtas.so, like a Unity Doorstop */
+    std::vector<std::string> game_preload;
 
     /* fps values */
     float fps, lfps = -1;

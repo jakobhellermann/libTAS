@@ -351,12 +351,12 @@ void GameThread::launch(Context *context)
 #elif defined(__APPLE__) && defined(__MACH__)
         sharg << "DYLD_INSERT_LIBRARIES=";
 #endif
-        if (!context->old_ld_preload.empty()) {
-            sharg << context->libtaspath << ":" << context->old_ld_preload << " ";
-        }
-        else {
-            sharg << context->libtaspath << " ";
-        }
+        sharg << context->libtaspath;
+        for (const std::string& lib : context->game_preload)
+            sharg << ":" << lib;
+        if (!context->old_ld_preload.empty())
+            sharg << ":" << context->old_ld_preload;
+        sharg << " ";
         
         /* We need to set DYLD_FORCE_FLAT_NAMESPACE so that we can hook into the game */
 #if defined(__APPLE__) && defined(__MACH__)

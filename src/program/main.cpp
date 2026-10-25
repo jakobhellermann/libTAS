@@ -99,6 +99,7 @@ static void print_usage(void)
     std::cout << "  -t, --test-mode         Enable test mode: disable 'prevent writing to disk' and enable non-interactive mode" << std::endl;
     std::cout << "      --libtas-so-path    Path to libtas.so (equivalent to setting LIBTAS_SO_PATH)" << std::endl;
     std::cout << "      --libtas32-so-path  Path to libtas32.so (equivalent to setting LIBTAS32_SO_PATH)" << std::endl;
+    std::cout << "      --preload LIB       Preload LIB into the game after libtas.so (repeatable)" << std::endl;
     std::cout << "  -i, --input-editor      Open Input Editor window at startup" << std::endl;
     std::cout << "  -L, --lua-console       Open Lua Console window at startup" << std::endl;
     std::cout << "  -s, --set KEY=VALUE     Override any config setting (KEY matches ini key names)" << std::endl;
@@ -139,6 +140,7 @@ int main(int argc, char **argv)
         {"test-mode", no_argument, nullptr, 'N'},
         {"libtas-so-path", required_argument, nullptr, 'p'},
         {"libtas32-so-path", required_argument, nullptr, 'P'},
+        {"preload", required_argument, nullptr, 'E'},
         {"help", no_argument, nullptr, 'h'},
         {"input-editor", no_argument, nullptr, 'i'},
         {"lua-console", no_argument, nullptr, 'L'},
@@ -190,6 +192,9 @@ int main(int argc, char **argv)
                 break;
             case 'P':
                 context.libtas32path = std::filesystem::weakly_canonical(optarg);
+                break;
+            case 'E':
+                context.game_preload.push_back(optarg);
                 break;
             case '?':
                 std::cerr << "Unknown option character" << std::endl;
@@ -355,7 +360,15 @@ int main(int argc, char **argv)
 
     /* Apply CLI settings after loading the config file so they take priority */
     for (const auto& [key, value] : pending_cli_settings) {
-        if (!context.config.applyCliSetting(key, value)) {
+        bool known;
+        try {
+            known = context.config.applyCliSetting(key, value);
+        }
+        catch (const std::logic_error& e) {
+            std::cerr << "Invalid value '" << value << "' for setting " << key << ": " << e.what() << std::endl;
+            return 1;
+        }
+        if (!known) {
             std::cerr << "Unknown setting key: " << key << std::endl;
             return 1;
         }

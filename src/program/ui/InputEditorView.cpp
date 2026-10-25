@@ -76,6 +76,8 @@ InputEditorView::InputEditorView(Context* c, MovieFile *m, QWidget *parent) : QT
     /* Add column is fixed */
     horizontalHeader()->resizeSection(inputEditorModel->columnCount()-1, 20);
 
+    resizeAllColumns();
+
     horizontalHeader()->setSectionsMovable(true);
     horizontalHeader()->setHighlightSections(false);
     horizontalHeader()->setDropIndicatorShown(true);

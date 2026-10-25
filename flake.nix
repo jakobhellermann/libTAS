@@ -66,7 +66,13 @@
         });
 
         kumquatPackage = kumquat.packages.${system}.default;
-        mesaGpuPackage = mesaGpu.packages.${system}.gfxstream;
+        # The game process resolves libxcb-present to the system copy, which may predate 1.17.
+        mesaGpuPackage = mesaGpu.packages.${system}.gfxstream.overrideAttrs (old: {
+          postPatch = (old.postPatch or "") + ''
+            substituteInPlace meson.build \
+              --replace-fail 'with_dri3_explicit_sync = true' 'with_dri3_explicit_sync = false'
+          '';
+        });
         gfxstreamIcd = "${mesaGpuPackage}/share/vulkan/icd.d/gfxstream_vk_icd.x86_64.json";
 
         libtas = libtasUnwrapped.overrideAttrs (old: {

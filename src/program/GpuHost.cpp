@@ -83,6 +83,18 @@ std::string GpuHost::start(Context* context)
     if (kumquat.empty() || gfxstreamIcd(context).empty())
         return "GPU host: kumquat_path and gfxstream_icd (or LIBTAS_KUMQUAT_BIN and LIBTAS_GFXSTREAM_ICD) are required";
 
+    std::string features_arg = "--renderer-features=VulkanSnapshots:enabled";
+    int udmabuf = open("/dev/udmabuf", O_RDONLY | O_CLOEXEC);
+    if (udmabuf >= 0) {
+        close(udmabuf);
+        features_arg += ",VulkanAllocateHostVisibleAsUdmabuf:enabled";
+    }
+    else {
+        std::cerr << "GPU host: cannot open /dev/udmabuf (" << strerror(errno)
+                  << "), sharing exported device memory instead; savestates can be slow. "
+                  << std::endl;
+    }
+
     context->kumquat_dir = directory();
     std::filesystem::create_directories(context->kumquat_dir);
     std::filesystem::remove(context->kumquat_dir / "gpu.sock");
@@ -117,7 +129,7 @@ std::string GpuHost::start(Context* context)
         setenv("GFXSTREAM_LOG_LEVEL", "info", 0);
         execlp(kumquat.c_str(), "kumquat",
               "--capset-names=gfxstream-vulkan", socket_arg.c_str(), control_arg.c_str(),
-              "--renderer-features=VulkanSnapshots:enabled", static_cast<char*>(nullptr));
+              features_arg.c_str(), static_cast<char*>(nullptr));
         dprintf(2, "exec %s: %s\n", kumquat.c_str(), strerror(errno));
         _exit(127);
     }

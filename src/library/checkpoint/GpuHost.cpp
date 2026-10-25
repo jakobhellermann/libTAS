@@ -308,6 +308,11 @@ static void replace(uint32_t resource, int memory)
         NATIVECALL(close(memory));
 }
 
+bool GpuHost::holdsObject(dev_t dev, ino_t ino)
+{
+    return active() && findObject(dev, ino);
+}
+
 bool GpuHost::restoresFd(int fd)
 {
     if (!active())

@@ -20,6 +20,8 @@
 #ifndef LIBTAS_GPUHOST_H_INCLUDED
 #define LIBTAS_GPUHOST_H_INCLUDED
 
+#include <sys/types.h>
+
 namespace libtas {
 
 /* Asks kumquat, the process that renders the game's Vulkan calls, to snapshot
@@ -42,6 +44,9 @@ bool active();
 
 /* Whether finishRestore() places a GPU host object at this fd of the loaded state */
 bool restoresFd(int fd);
+
+/* Whether this file is a GPU host object of the current snapshot */
+bool holdsObject(dev_t dev, ino_t ino);
 
 }
 }

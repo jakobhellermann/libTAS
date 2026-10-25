@@ -21,6 +21,7 @@
 
 #include "MemArea.h"
 #include "ReservedMemory.h"
+#include "GpuHost.h"
 
 #include "fileio/FileHandleList.h"
 #include "logging.h"
@@ -162,6 +163,11 @@ void Area::fillDeletedFd()
     if (!(flags & Area::AREA_FILE))
         return;
     
+    /* finishRestore() maps the GPU host's new object here; the game's fd of the old one
+     * is not recreated. */
+    if (GpuHost::holdsObject(makedev(devmajor, devminor), inodenum))
+        return;
+
     if (strlen(name) > 10 && (0 == strcmp(name + strlen(name) - 10, " (deleted)"))) {
         fd = FileHandleList::fdFromFile(name, makedev(devmajor, devminor), inodenum);
     }

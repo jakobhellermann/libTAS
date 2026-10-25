@@ -355,7 +355,15 @@ int main(int argc, char **argv)
 
     /* Apply CLI settings after loading the config file so they take priority */
     for (const auto& [key, value] : pending_cli_settings) {
-        if (!context.config.applyCliSetting(key, value)) {
+        bool known;
+        try {
+            known = context.config.applyCliSetting(key, value);
+        }
+        catch (const std::logic_error& e) {
+            std::cerr << "Invalid value '" << value << "' for setting " << key << ": " << e.what() << std::endl;
+            return 1;
+        }
+        if (!known) {
             std::cerr << "Unknown setting key: " << key << std::endl;
             return 1;
         }

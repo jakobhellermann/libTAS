@@ -574,6 +574,19 @@ static void U5_JobQueue_ScheduleJob(JobQueue *t, void (*func)(void*), void* arg,
 /* For certain functions that will softlock if we attempt to wait for them, skip them */
 static thread_local int skip_job_wait = 0;
 
+static bool ujobWaitAvailable()
+{
+    if (orig::U6_ujob_wait_for || orig::U2K_JobQueue_WaitForJobGroupID)
+        return true;
+
+    static bool warned = false;
+    if (!warned) {
+        warned = true;
+        LOG(LL_ERROR, LCF_HACKS, "No Unity job wait function found for this Unity version, Unity jobs sync is not effective");
+    }
+    return false;
+}
+
 static JobGroupID U5_JobQueue_ScheduleGroup(JobQueue *t, JobGroup* x, int y)
 {
     LOGTRACE(LCF_HACKS, "U5_JobQueue_ScheduleGroup called with JobGroup %p and priority %d", x, y);
@@ -758,7 +771,7 @@ static unsigned long U2K_ujob_schedule_job_internal(ujob_control_t* x, ujob_hand
     LOGTRACE_SIMPLE(LCF_HACKS);
     unsigned long ret = orig::U2K_ujob_schedule_job_internal(x, y);
 
-    if (Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS) {
+    if ((Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS) && ujobWaitAvailable()) {
         if (orig::U6_ujob_wait_for)
             orig::U6_ujob_wait_for(x, y, 1);
         else if (orig::U2K_JobQueue_WaitForJobGroupID)
@@ -773,7 +786,7 @@ static unsigned long U6_ujob_schedule_job_internal(ujob_control_t* x, ujob_handl
     LOGTRACE_SIMPLE(LCF_HACKS);
     unsigned long ret = orig::U6_ujob_schedule_job_internal(x, y, z);
     
-    if (Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS) {
+    if ((Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS) && ujobWaitAvailable()) {
         /* In newer Unity 6 versions, there is a dedicated internal function for
          * waiting on a job */
         if (orig::U6_ujob_wait_for)
@@ -829,7 +842,8 @@ static ujob_handle_t U6_ujob_schedule_parallel_for_internal(ujob_control_t* x, J
 {
     LOGTRACE(LCF_HACKS, "U6_ujob_schedule_parallel_for_internal called with callback args %p , steal mode %d, count %d, ujob_handle_t %p", job_callback_arg, a?(*a):0, count, d);
 
-    if (!(Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS))
+    /* Our merged job argument must outlive the job, which requires waiting on it */
+    if (!(Global::shared_config.game_specific_sync & SharedConfig::GC_SYNC_UNITY_JOBS) || !ujobWaitAvailable())
         return orig::U6_ujob_schedule_parallel_for_internal(x, y, job_callback_arg, a, count, c, d, e);
 
     ujob_handle_t ret = 0;

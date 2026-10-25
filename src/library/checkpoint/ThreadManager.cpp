@@ -190,6 +190,7 @@ void ThreadManager::initThreadFromParent(ThreadInfo* thread, void * (* start_rou
     thread->state = ThreadInfo::ST_RUNNING;
     thread->routine_id = (char *)start_routine - (char *)from;
     thread->detached = false;
+    thread->routine_returned = false;
     thread->initial_native = GlobalState::isNative();
     thread->initial_owncode = GlobalState::isOwnCode();
     thread->initial_nolog = GlobalState::isNoLog();

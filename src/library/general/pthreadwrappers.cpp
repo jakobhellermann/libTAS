@@ -79,6 +79,8 @@ static void *pthread_start(void *arg)
 
     /* Execute the function */
     void *ret = thread->start(thread->arg);
+    thread->retval = ret;
+    thread->routine_returned.store(true, std::memory_order_release);
 
     LOG(LL_DEBUG, LCF_THREAD, "End of thread code");
 
@@ -188,7 +190,25 @@ static void *pthread_native_start(void *arg)
 
 /* Override */ int pthread_join (pthread_t pthread_id, void **thread_return)
 {
-    RETURN_IF_NATIVE(pthread_join, (pthread_id, thread_return), "libpthread.so");
+    if (GlobalState::isNative()) {
+        ThreadInfo* thread = ThreadManager::getThread(pthread_id);
+        if (!thread)
+            RETURN_NATIVE(pthread_join, (pthread_id, thread_return), "libpthread.so");
+
+        /* Threads created outside native code are detached. Native code such as a
+         * driver may join one inside the frame boundary, where the thread cannot
+         * take the wrapper lock to finish, so only its routine is waited for. */
+        if (thread->detached)
+            return EINVAL;
+        while (!thread->routine_returned.load(std::memory_order_acquire)) {
+            struct timespec mssleep = {0, 1000*1000};
+            nanosleep(&mssleep, NULL);
+        }
+        if (thread_return)
+            *thread_return = thread->retval;
+        ThreadManager::threadDetach(pthread_id);
+        return 0;
+    }
 
     ThreadSync::waitForThreadsToFinishInitialization();
 

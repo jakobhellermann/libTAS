@@ -27,6 +27,7 @@
 #include "frame.h"
 #include "global.h"
 #include "GlobalState.h"
+#include "UnityHacks.h"
 
 #include <string.h>
 #include <dlfcn.h>
@@ -687,6 +688,19 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
 
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_VULKAN);
 
+    // HACK: make first vulkan frames (present 10ms dt, present 10ms dt) match opengl (present present 20ms, skip)
+    static int present_count = 0;
+    const bool unity_first_frames = UnityHacks::isUnity();
+    if (unity_first_frames) {
+        ++present_count;
+        if (present_count == 1) {
+            std::function<void()> dummy_draw;
+            static RenderHUD dummy;
+            frameBoundary(dummy_draw, dummy);
+        }
+    }
+    bool skip_present = unity_first_frames && present_count == 2;
+
     /* Store the graphic queue */
     vk::context.graphicsQueue = queue;
 
@@ -707,7 +721,7 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
         vk::context.currentSemaphore = VK_NULL_HANDLE;
     }
 
-    if (Global::skipping_draw) {        
+    if (Global::skipping_draw || skip_present) {
         /* If skipping draw, we must still wait on all semaphores, so we push an
         * empty command */
         VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -723,6 +737,9 @@ VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo)
             VKCHECKERROR(submitRes);
             return submitRes;
         }
+        /* The image stays held and is handed out again by the next acquire */
+        if (skip_present)
+            return VK_SUCCESS;
     }
 
     /* Start the frame boundary and pass the function to draw */

@@ -758,7 +758,7 @@ bool UnityPatching::sendAddressesFromSymbols(std::string debugfile, uintptr_t ba
             sendMessage(MSGN_UNITY_ADDR);
             sendData(&UNITY_SYMBOLS[i].id, sizeof(int));
             sendData(&func_addr, sizeof(uint64_t));
-            std::cout << "Found symbol for function " << UNITY_SYMBOLS[i].name << " in address " << std::hex << func_addr << std::endl;
+            std::cout << "Found symbol for function " << UNITY_SYMBOLS[i].name << " in address " << std::hex << func_addr << std::dec << std::endl;
         }
     }
     
@@ -809,7 +809,7 @@ void UnityPatching::sendAddressesFromSignatures(std::pair<uintptr_t,uintptr_t> e
                     break;
                 case 1:
                     func_addr = executablefile_segment.first + func_offset;
-                    std::cout << "Found unique matching signature ("<< signature << ") for function " << name << " in address " << std::hex << (uintptr_t)func_addr << std::endl;
+                    std::cout << "Found unique matching signature ("<< signature << ") for function " << name << " in address " << std::hex << (uintptr_t)func_addr << std::dec << std::endl;
                     sendMessage(MSGN_UNITY_ADDR);
                     sendData(&signatures[i].id, sizeof(int));
                     sendData(&func_addr, sizeof(uintptr_t));

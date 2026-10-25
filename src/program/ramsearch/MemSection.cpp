@@ -142,7 +142,7 @@ void MemSection::readMap(std::string& line)
 
 void MemSection::print() const
 {
-    std::cerr << "Memsection " << std::hex << addr << "-" << std::hex << endaddr;
+    std::cerr << "Memsection " << std::hex << addr << "-" << std::hex << endaddr << std::dec;
     std::cerr << (readflag?" (r":" (-") << (writeflag?'w':'-') << (execflag?'x':'-') << (sharedflag?"s) ":"p) ");
     std::cerr << '[' << filename << ']' << std::endl;
 }

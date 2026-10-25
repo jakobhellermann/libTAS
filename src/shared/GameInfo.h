@@ -34,6 +34,8 @@ struct GameInfo {
         SDL2 = 0x02,
         SDL2_SURFACE = 0x04,
         SDL2_RENDERER = 0x08,
+        /* OPENGL and VULKAN exclude each other: the API used last is the one that
+         * presents, e.g. a Vulkan game after a GL probe, or GL on top of zink. */
         OPENGL = 0x10,
         EGL = 0x20,
         VDPAU = 0x40,

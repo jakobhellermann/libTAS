@@ -166,15 +166,18 @@ esac
 
 dnl **** Export date and commit ****
 
+AC_ARG_VAR([LIBTAS_GIT_COMMIT], [commit hash of an interim build without git, like in a nix sandbox])
+AC_ARG_VAR([LIBTAS_GIT_DATE], [commit date (YYYY-MM-DD) of an interim build without git])
+
 AS_IF([test "x$enable_release_build" != "xyes"], [
     dnl Get the latest abbreviated commit hash of the working branch
-    git_commit_hash=`git log -1 --format=%h`
+    git_commit_hash=${LIBTAS_GIT_COMMIT:-`git log -1 --format=%h`}
     AC_DEFINE_UNQUOTED([LIBTAS_INTERIM_COMMIT], ["$git_commit_hash"], [Git commit hash])
     AC_MSG_NOTICE([git commit hash is $git_commit_hash])
 
     AS_IF([test "x$enable_build_date" != "xno"], [
       dnl Add commit date as macro
-      git_commit_date=`git log -1 --format=%as`
+      git_commit_date=${LIBTAS_GIT_DATE:-`git log -1 --format=%as`}
       AC_DEFINE_UNQUOTED([LIBTAS_INTERIM_DATE], ["$git_commit_date"], [Git commit date])
       AC_MSG_NOTICE([git commit date is $git_commit_date])
     ])

@@ -21,6 +21,7 @@
 #include "AutoDetect.h"
 #include "utils.h"
 #include "Context.h"
+#include "GpuHost.h"
 #include "../shared/SharedConfig.h"
 
 #include <string>
@@ -69,12 +70,25 @@ void GameThread::set_env_variables(Context *context, int gameArch)
     setenv("vblank_mode", "0", 1);
 
     /* Set additional environment variables regarding Mesa and VDPAU configurations */
-    if (context->config.sc.opengl_soft) {
+    switch (context->config.sc.rendering) {
+    case SharedConfig::RENDERING_NATIVE:
+        break;
+    case SharedConfig::RENDERING_SOFTWARE:
         setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
         setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
         setenv("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/lvp_icd.i686.json:/usr/share/vulkan/icd.d/lvp_icd.x86_64.json:/usr/share/vulkan/icd.d/lvp_icd.json", 1);
         setenv("VDPAU_DRIVER", "va_gl", 1);
         setenv("VDPAU_QUIRKS", "AvoidVA", 1);
+
+        /* Present Vulkan by copying to the window: with shared memory, the X
+         * server holds swapchain images and their fences, which a loaded
+         * state cannot rewind. */
+        // TODO alternative queue one OUT_OF_DATE swapchain to invalidate xshmfence mappings
+        appendEnvList("MESA_VK_WSI_DEBUG", "noshm");
+        break;
+    case SharedConfig::RENDERING_GPU_HOST:
+        GpuHost::setGameEnv(context);
+        break;
     }
 
     /* If we prefer OpenAL Soft, we'll want to force it to use either SDL2 or ALSA internally */
@@ -365,7 +379,7 @@ void GameThread::launch(Context *context)
     }
 
     /* Append the game command-line arguments */
-    sharg << context->config.gameargs;
+    sharg << context->config.gameargs << context->engine_args;
 
     /* Run the actual game with sh, taking care of splitting arguments */
     execlp("sh", "sh", "-c", sharg.str().c_str(), nullptr);

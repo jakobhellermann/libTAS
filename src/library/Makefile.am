@@ -46,6 +46,7 @@ libtas_so_SOURCES = \
     audio/sdl/sdlaudio.cpp \
     checkpoint/AltStack.cpp \
     checkpoint/Checkpoint.cpp \
+    checkpoint/GpuHost.cpp \
     checkpoint/CheckpointSavefiles.cpp \
     checkpoint/MemArea.cpp \
     checkpoint/ProcSelfMaps.cpp \
@@ -250,6 +251,9 @@ libtas_so_SOURCES = \
 
 libtas_so_CXXFLAGS = $(LIBSWRESAMPLE_CFLAGS) -fPIC -shared -rdynamic -fno-stack-protector -fvisibility=hidden
 libtas_so_CXXFLAGS += -DLIBTAS_LIBRARY
+# libtas.so is always preloaded, so its thread-locals sit in the static TLS block and
+# are reached without the DTV, which savestate loading can free before restoring it
+libtas_so_CXXFLAGS += -ftls-model=initial-exec
 libtas_so_LDFLAGS = -shared
 libtas_so_LDADD = $(LIBRARY_LIBS)
 

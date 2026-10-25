@@ -229,19 +229,48 @@ GameEventsXcb::EventType GameEventsXcb::nextEvent(struct HotKey &hk)
     return EVENT_TYPE_NONE;
 }
 
+/* For requests that have no arguments to fail on: the X server is gone. */
+[[noreturn]] static void replyFailed(const char* what, xcb_generic_error_t* error)
+{
+    if (error)
+        std::cerr << "Could not get the " << what << ", X error " << static_cast<int>(error->error_code) << std::endl;
+    else
+        std::cerr << "Lost the connection to the X server" << std::endl;
+    free(error);
+    _exit(1);
+}
+
 bool GameEventsXcb::haveFocus()
 {
+    if (!context->game_window)
+        return false;
+
     xcb_window_t focus_window;
 
     xcb_generic_error_t* error;
     xcb_get_input_focus_cookie_t focus_cookie = xcb_get_input_focus(context->conn);
     xcb_get_input_focus_reply_t* focus_reply = xcb_get_input_focus_reply(context->conn, focus_cookie, &error);
-    if (error) {
-        std::cerr << "Could not get focussed window, X error" << error->error_code << std::endl;
-    }
+    if (!focus_reply)
+        replyFailed("focussed window", error);
 
     focus_window = focus_reply->focus;
     free(focus_reply);
+
+    if (focus_window == XCB_NONE)
+        return false;
+
+    if (focus_window == XCB_INPUT_FOCUS_POINTER_ROOT) {
+        /* Keyboard input goes to the top-level window under the pointer */
+        xcb_window_t root = xcb_setup_roots_iterator(xcb_get_setup(context->conn)).data->root;
+        xcb_query_pointer_cookie_t pointer_cookie = xcb_query_pointer(context->conn, root);
+        xcb_query_pointer_reply_t* pointer_reply = xcb_query_pointer_reply(context->conn, pointer_cookie, &error);
+        if (!pointer_reply)
+            replyFailed("window under the pointer", error);
+        focus_window = pointer_reply->child;
+        free(pointer_reply);
+        if (focus_window == XCB_NONE)
+            return false;
+    }
 
     return (getTopLevelWindow(focus_window) == getTopLevelWindow(context->game_window));
 }

@@ -39,6 +39,9 @@ namespace Checkpoint
 
     void setCurrentToParent();
 
+    /* Removes the files of the current savestate slot */
+    void discardState();
+
     void getStateHeader(StateHeader* sh);
     int checkCheckpoint();
     int checkRestore();

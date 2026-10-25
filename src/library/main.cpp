@@ -35,6 +35,7 @@
 #include "checkpoint/ThreadManager.h"
 #include "checkpoint/SaveStateManager.h"
 #include "checkpoint/Checkpoint.h"
+#include "checkpoint/GpuHost.h"
 #include "sdl/sdldynapi.h"
 #include "../shared/sockethelpers.h"
 #include "../shared/messages.h"
@@ -89,6 +90,7 @@ void __attribute__((constructor)) init(void)
 
     ThreadManager::init();
     SaveStateManager::init();
+    GpuHost::init();
 
     initSocketGame();
 

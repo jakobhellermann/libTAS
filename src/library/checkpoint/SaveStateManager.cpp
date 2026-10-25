@@ -23,6 +23,9 @@
 #include "ThreadManager.h"
 #include "ThreadSync.h"
 #include "Checkpoint.h"
+#include "GpuHost.h"
+#include "xcb/xcbrequests.h"
+#include "general/mallocwrappers.h"
 #include "AltStack.h"
 #include "ReservedMemory.h"
 #include "ThreadInfo.h"
@@ -191,7 +194,18 @@ void SaveStateManager::init()
             std::cerr << "Unexpected error from clone3" << std::endl;
         }
         else {
-            has_clone3_set_tid = true;
+            /* Choosing the tid also needs CAP_CHECKPOINT_RESTORE over the pid
+             * namespace. Asking for our own tid fails either way, with EPERM
+             * when we may not choose it. */
+            pid_t own_tid = getpid();
+            struct clone_args probe = {};
+            probe.exit_signal = SIGCHLD;
+            probe.set_tid = reinterpret_cast<uintptr_t>(&own_tid);
+            probe.set_tid_size = 1;
+            pid = syscall(__NR_clone3, &probe, sizeof(probe));
+            if (pid == 0)
+                _exit(0);
+            has_clone3_set_tid = (pid == -1 && errno == EEXIST);
         }
 #elif defined(__i386__)
         /* For now, disable clone3 until proper asm to use it can be written */
@@ -334,6 +348,8 @@ int SaveStateManager::checkpoint(int slot)
     AltStack::saveStack();
 
 #ifdef __unix__
+    XcbRequestGate::close();
+
     /* Lock the display so we can empty events */
     lockGameDisplays();
 #endif
@@ -388,6 +404,8 @@ int SaveStateManager::checkpoint(int slot)
      */
     FileHandleList::trackAllFiles();
 
+    GpuHost::startSnapshot(slot);
+
     /* We set the alternate stack to our reserved memory. The game might
      * register its own alternate stack, so we set our own just before the
      * checkpoint and we restore the game's alternate stack just after.
@@ -412,6 +430,12 @@ int SaveStateManager::checkpoint(int slot)
 
     /* Restoring the game alternate stack (if any) */
     AltStack::restoreStack();
+
+    bool gpu_saved = true;
+    if (restoreInProgress)
+        GpuHost::finishRestore();
+    else
+        gpu_saved = GpuHost::finishSnapshot();
 
     /* We recover the offset of all opened files. This must also be done BEFORE
      * resuming threads.
@@ -442,11 +466,21 @@ int SaveStateManager::checkpoint(int slot)
 
     resumeThreads();
 
+#ifdef __unix__
+    XcbRequestGate::open();
+#endif
+
     ThreadSync::releaseLocks();
 
     /* Mark the savestate as dirty in case of fork savestate */
     if (!restoreInProgress)
         stateStatus(slot, true);
+
+    /* Loading the memory without kumquat's state would leave the game broken */
+    if (!gpu_saved) {
+        Checkpoint::discardState();
+        return ESTATE_GPUHOST;
+    }
 
     return ESTATE_OK;
 }
@@ -486,6 +520,8 @@ int SaveStateManager::restore(int slot)
     restoreInProgress = false;
 
 #ifdef __unix__
+    XcbRequestGate::close();
+
     /* Lock the display so we can empty events */
     lockGameDisplays();
 
@@ -519,6 +555,8 @@ int SaveStateManager::restore(int slot)
      */
     AltStack::prepareStack();
 
+    GpuHost::startRestore(slot);
+
     /* Here is where we load all the memory and stuff */
     raise(sig_checkpoint);
 
@@ -532,6 +570,12 @@ int SaveStateManager::restore(int slot)
 
     /* If restore was not done, we return here */
     LOG(LL_DEBUG, LCF_CHECKPOINT, "Restoring was not done, resuming threads");
+
+    if (GpuHost::active()) {
+        /* kumquat restored a state the game did not load */
+        LOG(LL_FATAL, LCF_CHECKPOINT, "Restoring failed after the GPU host restored its state");
+        abort();
+    }
 
     /* Restoring the game alternate stack (if any) */
     AltStack::restoreStack();
@@ -549,6 +593,10 @@ int SaveStateManager::restore(int slot)
 #endif
 
     resumeThreads();
+
+#ifdef __unix__
+    XcbRequestGate::open();
+#endif
 
     ThreadSync::releaseLocks();
 
@@ -586,6 +634,9 @@ void SaveStateManager::terminateThreads()
 void SaveStateManager::suspendThreads()
 {
     MYASSERT(pthread_mutex_lock(&threadResumeLock) == 0)
+
+    struct timespec start;
+    NATIVECALL(clock_gettime(CLOCK_MONOTONIC, &start));
 
     /* Terminate threads flagged as such.
      * Halt all other threads - force them to call stopthisthread
@@ -682,15 +733,17 @@ void SaveStateManager::suspendThreads()
                     }
 
                     /* We must wait until the thread terminates entirely, because
-                     * it may release resources during state loading.
-                     * A terminating thread sets the tid in pthread struct to 0 */
+                     * it may release resources during state loading. The raw exit
+                     * in stopThisThread() leaves the tid in the pthread struct, so
+                     * ask the kernel whether the thread is still there. */
                     int i = 0;
-                    while (*thread->ptid != 0) {
-                        LOG(LL_DEBUG, LCF_CHECKPOINT, "Wait for tid %d to become 0", *thread->ptid);                        
+                    while (syscall(SYS_tgkill, getpid(), thread->real_tid, 0) == 0) {
                         usleep(1000);
                         i++;
-                        if (i > 1000)
+                        if (i > 1000) {
+                            LOG(LL_WARN, LCF_CHECKPOINT, "Thread %d did not terminate within 1 s, continuing", thread->real_tid);
                             break;
+                        }
                     }
                 }
                 break;
@@ -716,6 +769,12 @@ void SaveStateManager::suspendThreads()
 
     sem_destroy(&semNotifyCkptThread);
     LOG(LL_DEBUG, LCF_CHECKPOINT, "%d threads were suspended", numThreads);
+
+    struct timespec end;
+    NATIVECALL(clock_gettime(CLOCK_MONOTONIC, &end));
+    double ms = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
+    if (ms > 50)
+        LOG(LL_INFO, LCF_CHECKPOINT, "Suspending %d threads took %.1f ms", numThreads, ms);
 }
 
 /* Resume all threads. */
@@ -739,6 +798,9 @@ void SaveStateManager::stopThisThread(int signum)
     GlobalNative gn;
 
     ThreadInfo *current_thread = ThreadManager::getCurrentThread();
+
+    if (deferSuspendInAllocator())
+        return;
 
     if (current_thread->state == ThreadInfo::ST_TERMINATED) {
         /* Thread termination requested during restore: do a raw per-thread
@@ -920,7 +982,7 @@ void SaveStateManager::createNewThreads()
                 RUN_CLONE3_RESTORE_FN(returned_pid, cargs, sizeof(cargs), thread, startNewThread);
                 
                 if (returned_pid < 0) {
-                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, (errno == 0)?"None":strerror(errno));
+                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, strerror(static_cast<int>(-returned_pid)));
                 }
                 else if (returned_pid == 0) {
                     /* This is for child process, but it is supposed to have called
@@ -943,7 +1005,7 @@ void SaveStateManager::createNewThreads()
                 RUN_CLONE_RESTORE_FN(returned_pid, clone_flags, reinterpret_cast<uintptr_t>(thread->saved_sp) - 128, thread->ptid, thread->ptid, thread, startNewThread);
 
                 if (returned_pid < 0) {
-                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, (errno == 0)?"None":strerror(errno));
+                    LOG(LL_ERROR, LCF_CHECKPOINT | LCF_THREAD, "Could not recreate thread %llx (%d): %s", thread->pthread_id, thread->translated_tid, strerror(static_cast<int>(-returned_pid)));
                 }
             }
         }
@@ -979,6 +1041,7 @@ void SaveStateManager::printError(int err)
         "Savestate does not exist",
         "Loading not allowed because new threads were created",
         "State still saving",
+        "GPU host could not save the state, it was discarded",
         0 };
 
     if (err < 0) {

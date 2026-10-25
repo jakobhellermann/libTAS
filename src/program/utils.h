@@ -31,6 +31,10 @@ struct Context;
 /* Remove savestate files */
 void remove_savestates(Context* context);
 
+/* Moves the savestates to a new crash-<time> directory under the temporary directory,
+ * out of the way of remove_savestates(), and removes the GPU host snapshots */
+std::filesystem::path keep_savestates(Context* context);
+
 /* List of error codes */
 enum BinaryType {
     BT_UNKNOWN,
@@ -57,10 +61,17 @@ std::filesystem::path extractMacOSExecutable(std::filesystem::path path);
 /* Get the result of a shell command */
 std::string queryCmd(std::string_view cmd, int* status = nullptr);
 
+/* Appends an item to a comma-separated environment variable, keeping its current items. */
+void appendEnvList(const char* name, const char* item);
+
 /* Get the result of a shell command and returns pid */
 std::string queryCmdPid(const char **command, pid_t* popen_pid);
 
 /* Get the address of a symbol from a executable or library file */
 uint64_t getSymbolAddress(const char* symbol, const char* file);
+
+/* How a child process ended, waiting up to timeout_ms for it; the child is left unreaped.
+ * signaled is set when a signal terminated it. */
+std::string describeChildExit(pid_t pid, int timeout_ms, bool* signaled = nullptr);
 
 #endif

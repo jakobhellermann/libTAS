@@ -21,6 +21,7 @@
 #define LIBTAS_SAVESTATELIST_H_INCLUDED
 
 #include <string>
+#include <vector>
 #include <stdint.h>
 
 /* Forward declaration */
@@ -63,6 +64,9 @@ namespace SaveStateList {
 
     /* Save movies on disk when exiting */
     void backupMovies();
+
+    /* The saves and loads since init, one line each */
+    const std::vector<std::string>& history();
 
 }
 

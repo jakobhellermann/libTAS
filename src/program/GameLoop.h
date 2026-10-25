@@ -57,13 +57,27 @@ private:
     /* PID of the forked `sh` process which executes the game */
     pid_t fork_pid;
 
-    void init();
+    bool init();
 
     void initProcessMessages();
 
     bool startFrameMessages();
 
     void sleepSendPreview();
+
+    /* Prints how the game and the GPU host ended */
+    void reportGameEnd();
+
+    void removeOrKeepSavestates();
+
+    /* The game died from a signal, so its savestates are kept for debugging */
+    bool game_crashed = false;
+
+    /* How the game and the GPU host ended, for the crash report */
+    std::string game_end;
+    std::string gpu_end;
+
+    void writeCrashReport();
 
     void processInputs(AllInputs &ai);
 

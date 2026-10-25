@@ -161,6 +161,10 @@ public:
     /* Proton absolute path */
     std::filesystem::path proton_path;
 
+    /* GPU host programs for the GPU host rendering mode */
+    std::filesystem::path kumquat_path;
+    std::filesystem::path gfxstream_icd;
+
     /* Strace events, passed as [-e expr] */
     std::string strace_events;
 
@@ -198,8 +202,9 @@ public:
      * (-1 for unset) */
     int allow_downloads = -1;
 
-private:
     QString iniPath(const std::filesystem::path& gamepath) const;
+
+private:
 
     /* Set default paths and optionally create directories */
     void createDirectories();

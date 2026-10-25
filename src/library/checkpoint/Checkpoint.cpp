@@ -177,6 +177,12 @@ void Checkpoint::setBaseSavestatePath(std::string path)
     basepagespath[1023] = '\0';
 }
 
+void Checkpoint::discardState()
+{
+    unlink(pagemappath);
+    unlink(pagespath);
+}
+
 void Checkpoint::setSavestateIndex(int index)
 {
     ss_index = index;
@@ -335,9 +341,26 @@ void Checkpoint::handler(int signum, siginfo_t *info, void *ucontext)
                 x11::gameDisplays[i]->request = static_cast<unsigned long>(request[i]);
 #endif
 
-                /* Restore the entire xcb connection struct */
+                /* Keep the loaded connection, whose lists, locks and socket
+                 * ownership match the loaded memory and thread stacks, but take
+                 * what the server has seen advance since: sequence numbers,
+                 * buffered bytes and fds, and resource ids. */
                 xcb_connection_t *cur_xcb_conn = XGetXCBConnection(x11::gameDisplays[i]);
-                memcpy(cur_xcb_conn, &xcb_conn[i], sizeof(xcb_connection_t));
+                const xcb_connection_t &live = xcb_conn[i];
+                memcpy(&cur_xcb_conn->in.queue, &live.in.queue,
+                       offsetof(_xcb_in, current_reply) - offsetof(_xcb_in, queue));
+                cur_xcb_conn->in.in_fd = live.in.in_fd;
+                memcpy(&cur_xcb_conn->out.queue, &live.out.queue,
+                       offsetof(_xcb_out, reqlenlock) - offsetof(_xcb_out, queue));
+                cur_xcb_conn->out.maximum_request_length_tag = live.out.maximum_request_length_tag;
+                cur_xcb_conn->out.value = live.out.value;
+                cur_xcb_conn->out.out_fd = live.out.out_fd;
+                cur_xcb_conn->xid = live.xid;
+                cur_xcb_conn->has_error = live.has_error;
+
+                /* Xlib caches the next resource id from the savestate, which may
+                 * have been used on the server since; take a fresh one from xcb. */
+                (void) XAllocID(x11::gameDisplays[i]);
             }
         }
 #endif
@@ -500,9 +523,16 @@ static int reallocateArea(Area *saved_area, Area *current_area)
     if ((saved_area->isStandard()) && (current_area->addr != nullptr) &&
         (saved_area->addr == current_area->addr)) {
 
-        /* If it is not the same area, unmap the current area */
+        /* If it is not the same area, unmap the current area. A file mapping
+         * is only the same at the same offset of the same file: memfds share
+         * names, and the game may have remapped other parts of one since. */
+        bool other_file = !(saved_area->flags & Area::AREA_ANON) &&
+            ((saved_area->offset != current_area->offset) ||
+             (saved_area->devmajor != current_area->devmajor) ||
+             (saved_area->devminor != current_area->devminor) ||
+             (saved_area->inodenum != current_area->inodenum));
         if ((strcmp(saved_area->name, current_area->name) != 0) ||
-            (saved_area->flags != current_area->flags)) {
+            (saved_area->flags != current_area->flags) || other_file) {
 
             LOG(LL_DEBUG, LCF_CHECKPOINT, "Region %p (%s) with size %zd must be deallocated", current_area->addr, current_area->name, current_area->size);
             MYASSERT(munmap(current_area->addr, current_area->size) == 0)
@@ -578,6 +608,7 @@ static int reallocateArea(Area *saved_area, Area *current_area)
              */
             saved_area->addr = current_area->endAddr;
             saved_area->size -= copy_size;
+            saved_area->offset += copy_size;
             return 1;
         }
 
@@ -585,6 +616,7 @@ static int reallocateArea(Area *saved_area, Area *current_area)
             /* There is extra memory that we have to deal with */
             current_area->addr = saved_area->endAddr;
             current_area->size -= copy_size;
+            current_area->offset += copy_size;
             return -1;
         }
     }
@@ -1174,7 +1206,11 @@ static void writeAllAreas(bool base)
     while (not_eof) {
         if ((area.flags & Area::AREA_SHARED) && (previous_area.flags & Area::AREA_SHARED) &&
             (0 == strncmp(area.name, previous_area.name, Area::FILENAMESIZE)) &&
-            (area.offset == previous_area.offset) && 
+            /* Distinct files can share a name, like memfds */
+            (area.devmajor == previous_area.devmajor) &&
+            (area.devminor == previous_area.devminor) &&
+            (area.inodenum == previous_area.inodenum) &&
+            (area.offset == previous_area.offset) &&
             (area.size == previous_area.size)) {
             area.skip = true;    
         }

@@ -163,7 +163,7 @@ EGLBoolean eglMakeCurrent( EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGL
     LOGTRACE_SIMPLE(LCF_WINDOW | LCF_OGL);
 
     if (draw && XlibGameWindow::get()) {
-        Global::game_info.video |= GameInfo::EGL | GameInfo::OPENGL;
+        Global::game_info.video = (Global::game_info.video & ~GameInfo::VULKAN) | GameInfo::EGL | GameInfo::OPENGL;
         Global::game_info.tosend = true;
     }
 

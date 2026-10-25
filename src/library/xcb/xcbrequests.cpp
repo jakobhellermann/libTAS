@@ -48,6 +48,56 @@
 
 namespace libtas {
 
+static pthread_mutex_t gate_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t gate_cond = PTHREAD_COND_INITIALIZER;
+static bool gate_closed = false;
+static pthread_t gate_owner;
+static int gate_in_flight = 0;
+/* xcb's request functions call each other through hooked symbols. */
+static thread_local int gate_depth = 0;
+
+namespace {
+struct GateGuard {
+    GateGuard()
+    {
+        if (gate_depth++ > 0)
+            return;
+        NATIVECALL(pthread_mutex_lock(&gate_mutex));
+        while (gate_closed && !pthread_equal(gate_owner, pthread_self()))
+            NATIVECALL(pthread_cond_wait(&gate_cond, &gate_mutex));
+        gate_in_flight++;
+        NATIVECALL(pthread_mutex_unlock(&gate_mutex));
+    }
+    ~GateGuard()
+    {
+        if (--gate_depth > 0)
+            return;
+        NATIVECALL(pthread_mutex_lock(&gate_mutex));
+        gate_in_flight--;
+        NATIVECALL(pthread_cond_broadcast(&gate_cond));
+        NATIVECALL(pthread_mutex_unlock(&gate_mutex));
+    }
+};
+}
+
+void XcbRequestGate::close()
+{
+    NATIVECALL(pthread_mutex_lock(&gate_mutex));
+    gate_closed = true;
+    gate_owner = pthread_self();
+    while (gate_in_flight > 0)
+        NATIVECALL(pthread_cond_wait(&gate_cond, &gate_mutex));
+    NATIVECALL(pthread_mutex_unlock(&gate_mutex));
+}
+
+void XcbRequestGate::open()
+{
+    NATIVECALL(pthread_mutex_lock(&gate_mutex));
+    gate_closed = false;
+    NATIVECALL(pthread_cond_broadcast(&gate_cond));
+    NATIVECALL(pthread_mutex_unlock(&gate_mutex));
+}
+
 DEFINE_ORIG_POINTER(xcb_send_request)
 DEFINE_ORIG_POINTER(xcb_send_request_with_fds)
 DEFINE_ORIG_POINTER(xcb_send_request64)
@@ -647,6 +697,7 @@ static void handleRawRequest(xcb_connection_t* c, struct iovec* vector, std::fun
 unsigned int xcb_send_request(xcb_connection_t *c, int flags, struct iovec *vector, const xcb_protocol_request_t *req)
 {
     LINK_NAMESPACE_GLOBAL(xcb_send_request);
+    GateGuard gate;
 
     // xcb_send_request and friends just call into newer 64 bit and/or fds versions if available
     // so we need to guard against an unwanted double request handling
@@ -667,6 +718,7 @@ unsigned int xcb_send_request_with_fds(xcb_connection_t *c, int flags, struct io
         const xcb_protocol_request_t *req, unsigned int num_fds, int *fds)
 {
     LINK_NAMESPACE_GLOBAL(xcb_send_request_with_fds);
+    GateGuard gate;
 
     if (GlobalState::isNative() || GlobalState::isOwnCode() || !(flags & XCB_REQUEST_RAW)) {
         return orig::xcb_send_request_with_fds(c, flags, vector, req, num_fds, fds);
@@ -680,6 +732,7 @@ unsigned int xcb_send_request_with_fds(xcb_connection_t *c, int flags, struct io
 uint64_t xcb_send_request64(xcb_connection_t *c, int flags, struct iovec *vector, const xcb_protocol_request_t *req)
 {
     LINK_NAMESPACE_GLOBAL(xcb_send_request64);
+    GateGuard gate;
 
     if (GlobalState::isNative() || GlobalState::isOwnCode() || !(flags & XCB_REQUEST_RAW)) {
         return orig::xcb_send_request64(c, flags, vector, req);
@@ -694,6 +747,7 @@ uint64_t xcb_send_request_with_fds64(xcb_connection_t *c, int flags, struct iove
                 const xcb_protocol_request_t *req, unsigned int num_fds, int *fds)
 {
     LINK_NAMESPACE_GLOBAL(xcb_send_request_with_fds64);
+    GateGuard gate;
 
     if (GlobalState::isNative() || GlobalState::isOwnCode() || !(flags & XCB_REQUEST_RAW)) {
         return orig::xcb_send_request_with_fds64(c, flags, vector, req, num_fds, fds);

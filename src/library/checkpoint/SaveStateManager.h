@@ -43,6 +43,7 @@ enum Error {
     ESTATE_NOSTATE = -3, // No state in slot
     ESTATE_NOTSAMETHREADS = -4, // Thread list has changed
     ESTATE_NOTCOMPLETE = -5, // State still being saved
+    ESTATE_GPUHOST = -6, // GPU host could not save its part
 };
 
 

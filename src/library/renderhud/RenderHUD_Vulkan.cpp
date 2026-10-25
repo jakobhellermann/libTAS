@@ -35,7 +35,11 @@ namespace libtas {
 do { if (err < 0) LOG(LL_ERROR, LCF_WINDOW | LCF_VULKAN, "Vulkan error: %d", err); } while (0)
 
 RenderHUD_Vulkan::~RenderHUD_Vulkan() {
-    fini();
+    if (ImGui::GetCurrentContext()) {
+        fini();
+        ImGui_ImplXlib_Shutdown();
+        ImGui::DestroyContext();
+    }
 }
 
 void RenderHUD_Vulkan::init() {
@@ -64,22 +68,20 @@ void RenderHUD_Vulkan::init() {
     ImGui_ImplVulkan_Init(&init_info);
 }
 
+/* Only the Vulkan backend depends on the swapchain. */
 void RenderHUD_Vulkan::fini() {
-    if (ImGui::GetCurrentContext()) {
-        ImGui_ImplXlib_Shutdown();
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().BackendRendererUserData)
         ImGui_ImplVulkan_Shutdown();
-        ImGui::DestroyContext();
-    }
 }
 
 void RenderHUD_Vulkan::newFrame()
 {
     if (!ImGui::GetCurrentContext()) {
-        if (RenderHUD::init())
-            init();
-        else
+        if (!RenderHUD::init())
             return;
     }
+    if (!ImGui::GetIO().BackendRendererUserData)
+        init();
     ImGui_ImplVulkan_NewFrame();
 
     RenderHUD::newFrame();
@@ -95,6 +97,9 @@ void RenderHUD_Vulkan::render()
         return;
         
     ImGui::Render();
+
+    /* The swapchain was recreated since the frame began, see fini() */
+    if (!ImGui::GetIO().BackendRendererUserData) return;
 
     if (vk::context.swapchainRebuild) return;
 

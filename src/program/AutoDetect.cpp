@@ -181,8 +181,18 @@ void AutoDetect::game_libraries(Context *context)
     }
 }
 
+/* Adds an engine option unless the user's game arguments already name it. */
+static void addEngineArg(Context *context, const std::string& option, const std::string& arg)
+{
+    if (context->config.gameargs.find(option) != std::string::npos)
+        return;
+    std::cout << "   Adding " << arg << " command-line option" << std::endl;
+    context->engine_args += " " + arg;
+}
+
 int AutoDetect::game_engine(Context *context)
 {
+    context->engine_args.clear();
     context->gameexecutable = context->gamepath;
     
     /* Get file extension */
@@ -221,11 +231,16 @@ int AutoDetect::game_engine(Context *context)
         else
             std::cout << "   Could not detect version " << std::endl;
 
-        /* Check for -force-gfx-direct command-line option */
-        if (context->config.gameargs.find("-force-gfx-direct") == std::string::npos) {
-            std::cout << "   Adding -force-gfx-direct command-line option" << std::endl;
-            context->config.gameargs += " -force-gfx-direct";
-        }
+        addEngineArg(context, "-force-gfx-direct", "-force-gfx-direct");
+
+        /* Render directly on the GPU host's Vulkan driver instead of GL through zink.
+         * Unity versions without Vulkan ignore it, and a graphics API in the game arguments wins. */
+        const std::string& args = context->config.gameargs;
+        bool api_chosen = args.find("-force-gl") != std::string::npos ||
+                          args.find("-force-opengl") != std::string::npos ||
+                          args.find("-force-vulkan") != std::string::npos;
+        if (context->config.sc.rendering == SharedConfig::RENDERING_GPU_HOST && !api_chosen)
+            addEngineArg(context, "-force-vulkan", "-force-vulkan");
         
         return ENGINE_UNITY;
     }
@@ -256,11 +271,7 @@ int AutoDetect::game_engine(Context *context)
     if (!godotcount.empty() && (std::strtoul(godotcount.c_str(), nullptr, 10) > 100)) {
         std::cout << "Godot game detected" << std::endl;
 
-        /* Check for --audio-driver command-line option */
-        if (context->config.gameargs.find("--audio-driver") == std::string::npos) {
-            std::cout << "   Adding --audio-driver ALSA command-line option" << std::endl;
-            context->config.gameargs += " --audio-driver ALSA";
-        }
+        addEngineArg(context, "--audio-driver", "--audio-driver ALSA");
         
         return ENGINE_GODOT;
     }

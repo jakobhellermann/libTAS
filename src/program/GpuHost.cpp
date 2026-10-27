@@ -83,17 +83,20 @@ std::string GpuHost::start(Context* context)
     if (kumquat.empty() || gfxstreamIcd(context).empty())
         return "GPU host: kumquat_path and gfxstream_icd (or LIBTAS_KUMQUAT_BIN and LIBTAS_GFXSTREAM_ICD) are required";
 
+    /* kumquat picks how host visible memory reaches the game unless LIBTAS_GPU_MODE forces one. */
+    const char* mode_env = getenv("LIBTAS_GPU_MODE");
+    std::string mode = mode_env ? mode_env : "";
     std::string features_arg = "--renderer-features=VulkanSnapshots:enabled";
-    int udmabuf = open("/dev/udmabuf", O_RDONLY | O_CLOEXEC);
-    if (udmabuf >= 0) {
-        close(udmabuf);
+    if (mode.empty())
         features_arg += ",VulkanAllocateHostVisibleAsUdmabuf:enabled";
-    }
-    else {
-        std::cerr << "GPU host: cannot open /dev/udmabuf (" << strerror(errno)
-                  << "), sharing exported device memory instead; savestates can be slow. "
-                  << std::endl;
-    }
+    else if (mode == "SYSTEMBLOB")
+        features_arg += ",SystemBlob:enabled";
+    else if (mode == "COPYMODE")
+        features_arg += ",VirtioGpuNext:disabled";
+    else
+        return "GPU host: unknown LIBTAS_GPU_MODE=" + mode + " (expected SYSTEMBLOB or COPYMODE)";
+    if (!mode.empty())
+        std::cerr << "GPU host: LIBTAS_GPU_MODE=" << mode << ", kumquat " << features_arg << std::endl;
 
     context->kumquat_dir = directory();
     std::filesystem::create_directories(context->kumquat_dir);

@@ -40,6 +40,10 @@
 #ifndef VERIFY_PRESENT
 #define VERIFY_PRESENT 0
 #endif
+// Clears the swapchain image with a render pass on a framebuffer instead of vkCmdClearColorImage.
+#ifndef RENDER_PASS
+#define RENDER_PASS 0
+#endif
 #if GL_PROBE
 #include <GL/glx.h>
 #endif
@@ -59,7 +63,10 @@ PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr_;
     X(vkGetSwapchainImagesKHR) X(vkAcquireNextImageKHR) X(vkQueuePresentKHR)           \
     X(vkResetCommandBuffer) X(vkBeginCommandBuffer) X(vkEndCommandBuffer)              \
     X(vkCmdCopyBuffer) X(vkCmdClearColorImage) X(vkCmdPipelineBarrier)                 \
-    X(vkQueueSubmit) X(vkWaitForFences) X(vkResetFences) X(vkDeviceWaitIdle)
+    X(vkQueueSubmit) X(vkWaitForFences) X(vkResetFences) X(vkDeviceWaitIdle)            \
+    X(vkCreateImageView) X(vkDestroyImageView) X(vkCreateRenderPass)                   \
+    X(vkCreateFramebuffer) X(vkDestroyFramebuffer) X(vkCmdBeginRenderPass)             \
+    X(vkCmdEndRenderPass)
 #define DECLARE(fn) static PFN_##fn fn;
 GLOBAL_FNS(DECLARE)
 INSTANCE_FNS(DECLARE)
@@ -97,6 +104,9 @@ static VkSurfaceKHR surface;
 static VkSwapchainKHR swapchain;
 static VkExtent2D swapchain_extent;
 static VkImage images[MAX_IMAGES];
+static VkRenderPass render_pass;
+static VkImageView views[MAX_IMAGES];
+static VkFramebuffer framebuffers[MAX_IMAGES];
 static uint32_t image_count;
 static VkSemaphore acquired;
 /* One per image: a present may still use the semaphore of the previous one. */
@@ -146,7 +156,8 @@ static void create_swapchain(void) {
         .imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
         .imageExtent = caps.currentExtent,
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                      (RENDER_PASS ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0),
         .preTransform = caps.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR,
@@ -156,8 +167,35 @@ static void create_swapchain(void) {
     CHECK(vkCreateSwapchainKHR(device, &sci, NULL, &swapchain));
     swapchain_extent = caps.currentExtent;
     if (old) vkDestroySwapchainKHR(device, old, NULL);
+    for (uint32_t i = 0; i < image_count; i++) {
+        if (framebuffers[i]) vkDestroyFramebuffer(device, framebuffers[i], NULL);
+        if (views[i]) vkDestroyImageView(device, views[i], NULL);
+        framebuffers[i] = VK_NULL_HANDLE;
+        views[i] = VK_NULL_HANDLE;
+    }
     image_count = MAX_IMAGES;
     CHECK(vkGetSwapchainImagesKHR(device, swapchain, &image_count, images));
+    if (!RENDER_PASS) return;
+    for (uint32_t i = 0; i < image_count; i++) {
+        VkImageViewCreateInfo vci = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = images[i],
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = VK_FORMAT_B8G8R8A8_UNORM,
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1},
+        };
+        CHECK(vkCreateImageView(device, &vci, NULL, &views[i]));
+        VkFramebufferCreateInfo fci = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass = render_pass,
+            .attachmentCount = 1,
+            .pAttachments = &views[i],
+            .width = swapchain_extent.width,
+            .height = swapchain_extent.height,
+            .layers = 1,
+        };
+        CHECK(vkCreateFramebuffer(device, &fci, NULL, &framebuffers[i]));
+    }
 }
 
 static void barrier(VkImage image, VkImageLayout from, VkImageLayout to) {
@@ -292,6 +330,30 @@ int main(void) {
     VkBuffer device_buf = make_buffer(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, NULL);
     VkBuffer readback_buf = make_buffer(host, (void **)&readback);
 
+    VkAttachmentDescription attachment = {
+        .format = VK_FORMAT_B8G8R8A8_UNORM,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    };
+    VkAttachmentReference color_ref = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription subpass = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_ref,
+    };
+    VkRenderPassCreateInfo rpci = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+    };
+    if (RENDER_PASS) CHECK(vkCreateRenderPass(device, &rpci, NULL, &render_pass));
     create_swapchain();
 
     // Index 0 holds the last written frame; index 1 is never written after frame 0, so it checks
@@ -347,15 +409,31 @@ int main(void) {
         CHECK(vkResetCommandBuffer(cmdbuf, 0));
         CHECK(vkBeginCommandBuffer(cmdbuf, &bi));
         vkCmdCopyBuffer(cmdbuf, upload_buf, device_buf, 1, &region);
-        barrier(images[index], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         VkClearColorValue color = {.float32 = {(frame % 8) / 8.0f, 0.2f, 0.4f, 1.0f}};
-        VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-        vkCmdClearColorImage(cmdbuf, images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &color, 1,
-                             &range);
-        barrier(images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        if (RENDER_PASS) {
+            VkClearValue clear = {.color = color};
+            VkRenderPassBeginInfo rpbi = {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = render_pass,
+                .framebuffer = framebuffers[index],
+                .renderArea = {{0, 0}, swapchain_extent},
+                .clearValueCount = 1,
+                .pClearValues = &clear,
+            };
+            vkCmdBeginRenderPass(cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdEndRenderPass(cmdbuf);
+        } else {
+            barrier(images[index], VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            vkCmdClearColorImage(cmdbuf, images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 &color, 1, &range);
+            barrier(images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        }
         CHECK(vkEndCommandBuffer(cmdbuf));
-        VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        VkPipelineStageFlags wait_stage = RENDER_PASS ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                                      : VK_PIPELINE_STAGE_TRANSFER_BIT;
         VkSubmitInfo psi = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                             .waitSemaphoreCount = 1,
                             .pWaitSemaphores = &acquired,

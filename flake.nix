@@ -5,6 +5,8 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     # libTAS from nixpkgs-unstable would need glibc 2.44 (libm symbol versions).
     nixpkgsLibtas.url = "github:NixOS/nixpkgs/nixos-24.05";
+    # Newer nixpkgs compile with -mtls-dialect=gnu2, whose GLIBC_ABI_GNU2_TLS marker needs glibc 2.43.
+    nixpkgsGpuHost.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
 
     mesaGpu = {
@@ -13,11 +15,11 @@
     };
     gfxstream = {
       url = "github:jakobhellermann/gfxstream/dev";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nixpkgsGpuHost";
     };
     kumquat = {
       url = "github:jakobhellermann/rutabaga_gfx/dev";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs.follows = "nixpkgsGpuHost";
       inputs.gfxstream.follows = "gfxstream";
     };
   };
@@ -83,8 +85,7 @@
           sha256 = "0396xi3km1yd0z4329lbjxmv82ddc40gd0x8hca0ylcj7i28pjig";
         };
 
-        # gfxstream from nixpkgs-unstable uses GNU2 TLS descriptors (GLIBC_ABI_GNU2_TLS)
-        glibcFloor = "2.43";
+        glibcFloor = "2.38";
 
         appimage = pkgs.stdenv.mkDerivation {
           pname = "libtas-gpu-appimage";
@@ -151,6 +152,8 @@
                       *) continue ;;
                     esac
                     [ "$use_host" = 1 ] && host_lib "$name" && continue
+                    # Only the guest ICD needs it, and that runs in the game next to the host's.
+                    [ "$name" = libudev.so.1 ] && continue
                     [ -e "$dest/$name" ] && continue
                     cp -L "$path" "$dest/$name"
                     changed=1
@@ -191,7 +194,6 @@
               for need in $needs; do
                 case "$need" in
                   GLIBC_[0-9]*) v=''${need#GLIBC_} ;;
-                  GLIBC_ABI_GNU2_TLS) v=2.43 ;;
                   *) v= ;;
                 esac
                 [ -n "$v" ] && [ "$(printf '%s\n${glibcFloor}\n' "$v" | sort -V | tail -1)" = "${glibcFloor}" ] && continue

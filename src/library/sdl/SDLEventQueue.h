@@ -135,6 +135,14 @@ class SDLEventQueue
 
 extern SDLEventQueue sdlEventQueue;
 
+/* When the user closes the game window: give an SDL game a quit event in our
+ * own event queue (which runs the game's event watchers), like the Stop
+ * button does. The window manager's close request never reaches those watchers
+ * through the native SDL queue, so a game that waits for SDL_QUIT would keep
+ * running after we stopped processing its frames. Returns false if the game
+ * isn't an SDL game. */
+bool insertWindowCloseQuitEvent();
+
 }
 
 #endif

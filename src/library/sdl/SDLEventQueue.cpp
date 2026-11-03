@@ -27,6 +27,34 @@ namespace libtas {
 
 SDLEventQueue sdlEventQueue;
 
+bool insertWindowCloseQuitEvent()
+{
+    bool inserted = false;
+
+    if (Global::game_info.video & GameInfo::SDL1) {
+        sdl1::SDL_Event ev = {};
+        ev.type = sdl1::SDL_QUIT;
+        sdlEventQueue.insert(&ev);
+        inserted = true;
+    }
+
+    if (Global::game_info.video & GameInfo::SDL2) {
+        sdl2::SDL_Event ev = {};
+        ev.type = sdl2::SDL_QUIT;
+        sdlEventQueue.insert(&ev);
+        inserted = true;
+    }
+
+    if (Global::game_info.video & GameInfo::SDL3) {
+        sdl3::SDL_Event ev = {};
+        ev.type = sdl3::SDL_EVENT_QUIT;
+        sdlEventQueue.insert(&ev);
+        inserted = true;
+    }
+
+    return inserted;
+}
+
 SDLEventQueue::~SDLEventQueue()
 {
     for (auto ev: eventQueue) {

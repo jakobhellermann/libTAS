@@ -30,6 +30,7 @@
 #include "UnityHacks.h"
 #include "frame.h"
 #include "global.h"
+#include "sdl/SDLEventQueue.h"
 #include "GlobalState.h"
 #include "checkpoint/ThreadSync.h"
 #include "renderhud/RenderHUD.h"
@@ -134,7 +135,9 @@ void pushNativeXlibEvents(Display *display)
             /* Catch the close event */
             if (static_cast<Atom>(event.xclient.data.l[0]) == x11_atom(WM_DELETE_WINDOW)) {
                 LOG(LL_DEBUG, LCF_EVENTS | LCF_WINDOW, "    caught a window close event");
-                Global::is_exiting = true;
+                /* SDL games get it as a quit event, like the Stop button sends; the others are left to exit. */
+                if (!insertWindowCloseQuitEvent())
+                    Global::is_exiting = true;
             }
 
             /* Catch a ping event */

@@ -457,16 +457,13 @@ int SaveStateManager::checkpoint(int slot)
         createNewThreads();
     }
 
+    resumeThreads();
+
 #ifdef __unix__
     /* After restore, we need to sync xcb connections to avoid potential deadlocks */
     if (restoreInProgress) {
         syncGameConnectionsAfterRestore();
     }
-#endif
-
-    resumeThreads();
-
-#ifdef __unix__
     XcbRequestGate::open();
 #endif
 

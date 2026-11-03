@@ -66,7 +66,7 @@ public:
     String(const String &string)
         : str(string.str), len(string.len),
           allocated(false), immutable(true), terminated(string.terminated) {}
-    String(String &&string)
+    String(String &&string) noexcept
         : str(string.str), len(string.len),
           allocated(string.allocated), immutable(string.immutable), terminated(string.terminated) {
         string.allocated = false;
@@ -96,7 +96,7 @@ public:
         terminated = string.terminated;
         return *this;
     }
-    String &operator=(String &&string) {
+    String &operator=(String &&string) noexcept {
         this->~String();
         str = string.str;
         len = string.len;

@@ -1,0 +1,1 @@
+-- Enumeration happens once at startup; no savestates.

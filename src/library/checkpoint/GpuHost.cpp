@@ -51,7 +51,9 @@ static const uint32_t KUMQUAT_RESOURCE = 0x103;
 static const uint32_t KUMQUAT_REMAP = 0x104;
 static const uint32_t KUMQUAT_END = 0x105;
 
-static const int RESPONSE_TIMEOUT_MS = 10000;
+/* Restoring a big snapshot (close to 1 GB in a 3D game on dozen, WSL) can take longer than 10 s.
+ * LIBTAS_GPU_TIMEOUT_SECS sets it, read once in init(): the restore handler can't read the environment. */
+static int response_timeout_ms = 120000;
 static const size_t MAX_MESSAGE = 4 + 4096;
 
 static int control = -1;
@@ -92,7 +94,7 @@ static uint32_t receive(char* payload, size_t* len, int* fd)
 {
     struct pollfd pfd = {control, POLLIN, 0};
     int ready;
-    NATIVECALL(ready = poll(&pfd, 1, RESPONSE_TIMEOUT_MS));
+    NATIVECALL(ready = poll(&pfd, 1, response_timeout_ms));
     if (ready == 0)
         FAIL("kumquat did not answer in time");
     if (ready < 0)
@@ -157,6 +159,10 @@ void GpuHost::init()
 {
     const char* fd_str;
     const char* dir_str;
+    const char* timeout_str;
+    NATIVECALL(timeout_str = getenv("LIBTAS_GPU_TIMEOUT_SECS"));
+    if (timeout_str && atoi(timeout_str) > 0)
+        response_timeout_ms = atoi(timeout_str) * 1000;
     NATIVECALL(fd_str = getenv("LIBTAS_GPU_CONTROL_FD"));
     NATIVECALL(dir_str = getenv("LIBTAS_GPU_DIR"));
     if (!fd_str || !dir_str)

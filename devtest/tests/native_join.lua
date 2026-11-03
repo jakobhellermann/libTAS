@@ -1,0 +1,1 @@
+-- Frames run without savestates.

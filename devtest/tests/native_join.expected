@@ -1,0 +1,11 @@
+TEST: frame 1
+TEST: frame 2
+TEST: frame 3
+TEST: frame 4
+TEST: frame 5
+TEST: frame 6
+TEST: join returned 0, thread finished 1
+TEST: frame 7
+TEST: frame 8
+TEST: frame 9
+TEST: frame 10

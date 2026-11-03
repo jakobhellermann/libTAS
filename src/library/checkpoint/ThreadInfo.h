@@ -64,6 +64,7 @@ struct ThreadInfo {
     ThreadTLSInfo tlsInfo; // thread local storage information not stored in
                            // memory (registers)
     void* retval; // return value of the original start function
+    std::atomic<bool> routine_returned{false}; // the original start function has returned
     bool initial_native = false; // initial value of the global native state
     bool initial_owncode = false; // initial value of the global owncode state
     bool initial_nolog = false; // initial value of the global nolog state

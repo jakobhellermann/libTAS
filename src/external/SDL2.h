@@ -28,6 +28,14 @@
 #ifndef _SDL2_h
 #define _SDL2_h
 
+/* SDL2_dynapi_procs.h guards SDL_LinuxSetThreadPriority and
+ * SDL_LinuxSetThreadPriorityAndPolicy with __LINUX__, which SDL_platform.h defines on
+ * Linux. Without it, these entries are skipped and every index after them is off by one
+ * (SDL_RenderGeometryRaw then points to SDL_RenderGeometry, which breaks the OSD). */
+#if defined(__linux__) && !defined(__LINUX__)
+#define __LINUX__ 1
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 #include <stddef.h>
